@@ -1,0 +1,9 @@
+[package]
+name = "x-filesystem"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+notify = "6.1"
+walkdir = "2.5"

@@ -1,0 +1,227 @@
+use x_core::errors::XCoreError;
+use x_core::workspace::{get_workspace, set_workspace};
+use x_core::settings::AppSettings;
+use x_core::tasks::config::load_tasks_config;
+use x_core::tasks::model::{Task, TaskExecution};
+use x_core::tasks::runner::{run_task_by_id, cancel_task_execution, get_task_runner_state};
+use x_filesystem::directory::{list_directory, DirectoryEntry};
+use x_filesystem::file::{read_file_content, write_file_content};
+use x_filesystem::operations::{create_file, create_directory, rename_path, delete_path};
+use x_filesystem::search::{search_workspace, SearchResultMatch};
+use x_process::process_manager::{spawn_process, write_process_stdin, kill_process};
+use x_security::paths::validate_path_in_workspace;
+use x_security::trust::{get_workspace_trust, set_workspace_trust, WorkspaceTrustState};
+use std::path::PathBuf;
+use tauri::Emitter;
+
+#[tauri::command]
+pub fn workspace_select(path: String) -> Result<(), XCoreError> {
+    set_workspace(PathBuf::from(path));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn workspace_get() -> Result<Option<PathBuf>, XCoreError> {
+    Ok(get_workspace())
+}
+
+#[tauri::command]
+pub fn workspace_list_directory(path: String) -> Result<Vec<DirectoryEntry>, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let target = PathBuf::from(path);
+    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    list_directory(&valid_path).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn filesystem_read_file(path: String) -> Result<String, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let target = PathBuf::from(path);
+    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    read_file_content(&valid_path).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn filesystem_write_file(path: String, content: String) -> Result<(), XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let target = PathBuf::from(path);
+    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    write_file_content(&valid_path, &content).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn filesystem_create_file(path: String, content: Option<String>) -> Result<(), XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let target = PathBuf::from(path);
+    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    create_file(&valid_path, content.as_deref().unwrap_or("")).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn filesystem_create_dir(path: String) -> Result<(), XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let target = PathBuf::from(path);
+    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    create_directory(&valid_path).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn filesystem_rename(old_path: String, new_path: String) -> Result<(), XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let old_target = PathBuf::from(old_path);
+    let new_target = PathBuf::from(new_path);
+    let valid_old = validate_path_in_workspace(&workspace_root, &old_target)?;
+    let valid_new = validate_path_in_workspace(&workspace_root, &new_target)?;
+    rename_path(&valid_old, &valid_new).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn filesystem_delete(path: String) -> Result<(), XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let target = PathBuf::from(path);
+    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    delete_path(&valid_path).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn filesystem_search(query: String, is_content: bool) -> Result<Vec<SearchResultMatch>, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let results = search_workspace(&workspace_root, &query, is_content, 100);
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn process_spawn(
+    app: tauri::AppHandle,
+    process_id: String,
+    command: String,
+    args: Vec<String>,
+    cwd: Option<String>,
+) -> Result<String, String> {
+    let workspace_root = get_workspace().ok_or_else(|| "Workspace not open".to_string())?;
+    let target_cwd = cwd.map(PathBuf::from).unwrap_or_else(|| workspace_root.clone());
+    let valid_cwd = validate_path_in_workspace(&workspace_root, &target_cwd)
+        .map_err(|e| e.to_string())?;
+
+    let app_out = app.clone();
+    let app_err = app.clone();
+    let app_exit = app.clone();
+
+    spawn_process(
+        process_id.clone(),
+        command,
+        args,
+        valid_cwd,
+        move |chunk| {
+            let _ = app_out.emit("process://stdout", chunk);
+        },
+        move |chunk| {
+            let _ = app_err.emit("process://stderr", chunk);
+        },
+        move |exit| {
+            let _ = app_exit.emit("process://exit", exit);
+        },
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn process_write_stdin(process_id: String, input: String) -> Result<(), String> {
+    write_process_stdin(&process_id, &input).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn process_kill(process_id: String) -> Result<(), String> {
+    kill_process(&process_id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn task_list() -> Result<Vec<Task>, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let config = load_tasks_config(&workspace_root);
+    Ok(config.tasks)
+}
+
+#[tauri::command]
+pub fn task_get(task_id: String) -> Result<Task, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let config = load_tasks_config(&workspace_root);
+    config
+        .tasks
+        .into_iter()
+        .find(|t| t.id == task_id)
+        .ok_or(XCoreError::TaskNotFound(task_id))
+}
+
+#[tauri::command]
+pub async fn task_run(
+    app: tauri::AppHandle,
+    task_id: String,
+    allow_untrusted: Option<bool>,
+) -> Result<String, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let allow = allow_untrusted.unwrap_or(false);
+
+    let app_start = app.clone();
+    let app_out = app.clone();
+    let app_prob = app.clone();
+    let app_done = app.clone();
+
+    run_task_by_id(
+        workspace_root,
+        task_id,
+        allow,
+        move |start_exec| {
+            let _ = app_start.emit("task://started", start_exec);
+        },
+        move |exec_id, chunk_text| {
+            let _ = app_out.emit("task://output", serde_json::json!({
+                "execution_id": exec_id,
+                "data": chunk_text
+            }));
+        },
+        move |problem| {
+            let _ = app_prob.emit("task://problem", problem);
+        },
+        move |done_exec| {
+            let _ = app_done.emit("task://completed", done_exec);
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn task_cancel(execution_id: String) -> Result<(), XCoreError> {
+    cancel_task_execution(&execution_id).await
+}
+
+#[tauri::command]
+pub fn task_history() -> Result<Vec<TaskExecution>, XCoreError> {
+    let state_arc = get_task_runner_state();
+    let state = state_arc.lock().unwrap();
+    Ok(state.execution_history.clone())
+}
+
+#[tauri::command]
+pub fn task_trust_set(trusted: bool) -> Result<(), XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    set_workspace_trust(&workspace_root, trusted);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn task_trust_get() -> Result<WorkspaceTrustState, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    Ok(get_workspace_trust(&workspace_root))
+}
+
+#[tauri::command]
+pub fn settings_get() -> Result<AppSettings, XCoreError> {
+    Ok(AppSettings::default())
+}
+
+#[tauri::command]
+pub fn settings_update(_theme: String) -> Result<(), XCoreError> {
+    Ok(())
+}

@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root.light {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f3f4f6;
+    --bg-editor: #ffffff;
+    --bg-hover: #e5e7eb;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+    --border-primary: #e5e7eb;
+    --accent-primary: #3b82f6;
+    --accent-hover: #2563eb;
+}
+
+:root.dark {
+    --bg-primary: #1f2937;
+    --bg-secondary: #111827;
+    --bg-editor: #1e1e1e; /* Match monaco vs-dark */
+    --bg-hover: #374151;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --border-primary: #374151;
+    --accent-primary: #3b82f6;
+    --accent-hover: #60a5fa;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-primary: #1f2937;
+        --bg-secondary: #111827;
+        --bg-editor: #1e1e1e;
+        --bg-hover: #374151;
+        --text-primary: #f9fafb;
+        --text-secondary: #d1d5db;
+        --text-muted: #9ca3af;
+        --border-primary: #374151;
+        --accent-primary: #3b82f6;
+        --accent-hover: #60a5fa;
+    }
+}
