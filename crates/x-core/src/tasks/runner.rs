@@ -1,13 +1,16 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
-use x_process::process_manager::{spawn_process, kill_process};
+use x_process::process_manager::{spawn_process_with_env, kill_process};
 use x_security::trust::validate_task_authorization;
-use crate::tasks::model::{TaskState, TaskExecution};
+use crate::tasks::model::{TaskState, TaskExecution, TaskType};
 use crate::tasks::config::load_tasks_config;
 use crate::tasks::resolver::resolve_task_dependencies;
 use crate::tasks::problem_matcher::{parse_compiler_output, Problem};
+use crate::tasks::variables::substitute_task_variables;
+use crate::toolchains::resolver::resolve_active_project_toolchains;
+use crate::toolchains::environment::ResolvedToolchainEnvironment;
 use crate::errors::XCoreError;
 
 pub struct TaskRunnerState {
@@ -35,6 +38,13 @@ pub fn current_timestamp_ms() -> u64 {
         .as_millis() as u64
 }
 
+pub fn clear_task_history() {
+    let state_arc = get_task_runner_state();
+    let mut state = state_arc.lock().unwrap();
+    state.execution_history.clear();
+    state.problems.clear();
+}
+
 pub async fn run_task_by_id<FStart, FOut, FProb, FDone>(
     workspace_root: PathBuf,
     task_id: String,
@@ -53,6 +63,10 @@ where
     let config = load_tasks_config(&workspace_root);
     let resolved_tasks = resolve_task_dependencies(&task_id, &config.tasks)?;
 
+    // Resolve toolchain environment for process execution
+    let toolchains = resolve_active_project_toolchains(&workspace_root);
+    let toolchain_env = ResolvedToolchainEnvironment::build(&toolchains);
+
     let execution_id = format!("exec_{}_{}", task_id, current_timestamp_ms());
 
     let on_start_cb = Arc::new(on_start);
@@ -61,14 +75,33 @@ where
     let on_done_cb = Arc::new(on_done);
 
     for task in resolved_tasks {
-        let task_cwd = task
+        let raw_cwd = task
             .working_directory
             .as_ref()
             .map(PathBuf::from)
             .unwrap_or_else(|| workspace_root.clone());
 
-        let valid_cwd = validate_task_authorization(&workspace_root, &task_cwd, allow_untrusted)
+        let valid_cwd = validate_task_authorization(&workspace_root, &raw_cwd, allow_untrusted)
             .map_err(|e| XCoreError::SecurityError(e.to_string()))?;
+
+        // Variable substitution for command & args
+        let tc_root = toolchains.first().and_then(|t| t.installation_path.as_deref()).map(Path::new);
+        let substituted_cmd = substitute_task_variables(&task.command, &workspace_root, None, tc_root);
+        let substituted_args: Vec<String> = task
+            .args
+            .iter()
+            .map(|a| substitute_task_variables(a, &workspace_root, None, tc_root))
+            .collect();
+
+        // Environment precedence: Base System -> Toolchain Environment -> Task Environment
+        let mut final_env = HashMap::new();
+        for (k, v) in &toolchain_env.env_map {
+            final_env.insert(k.clone(), v.clone());
+        }
+        for (k, v) in &task.environment {
+            let sub_v = substitute_task_variables(v, &workspace_root, None, tc_root);
+            final_env.insert(k.clone(), sub_v);
+        }
 
         let now = current_timestamp_ms();
         let mut execution = TaskExecution {
@@ -101,11 +134,12 @@ where
         let cb_out = on_out_cb.clone();
         let cb_err = on_out_cb.clone();
 
-        let process_res = spawn_process(
+        let process_res = spawn_process_with_env(
             execution_id.clone(),
-            task.command.clone(),
-            task.args.clone(),
+            substituted_cmd,
+            substituted_args,
             valid_cwd,
+            Some(final_env),
             move |chunk| {
                 {
                     let mut b = out_buf_clone.lock().unwrap();
@@ -189,6 +223,40 @@ where
     Ok(execution_id)
 }
 
+pub async fn run_task_by_type<FStart, FOut, FProb, FDone>(
+    workspace_root: PathBuf,
+    task_type: TaskType,
+    allow_untrusted: bool,
+    on_start: FStart,
+    on_output: FOut,
+    on_problem: FProb,
+    on_done: FDone,
+) -> Result<String, XCoreError>
+where
+    FStart: Fn(TaskExecution) + Send + Sync + 'static,
+    FOut: Fn(String, String) + Send + Sync + 'static,
+    FProb: Fn(Problem) + Send + Sync + 'static,
+    FDone: Fn(TaskExecution) + Send + Sync + 'static,
+{
+    let config = load_tasks_config(&workspace_root);
+    let target_task = config
+        .tasks
+        .iter()
+        .find(|t| t.task_type == task_type)
+        .ok_or_else(|| XCoreError::TaskNotFound(format!("No task found for type {:?}", task_type)))?;
+
+    run_task_by_id(
+        workspace_root,
+        target_task.id.clone(),
+        allow_untrusted,
+        on_start,
+        on_output,
+        on_problem,
+        on_done,
+    )
+    .await
+}
+
 pub async fn cancel_task_execution(execution_id: &str) -> Result<(), XCoreError> {
     let _ = kill_process(execution_id).await;
 
@@ -203,5 +271,40 @@ pub async fn cancel_task_execution(execution_id: &str) -> Result<(), XCoreError>
         Ok(())
     } else {
         Err(XCoreError::TaskNotFound(execution_id.to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[tokio::test]
+    async fn test_untrusted_workspace_task_restriction() {
+        let temp_dir = std::env::temp_dir().join("x_editor_task_untrusted_test");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        // Workspace trust is Untrusted by default
+        let res = run_task_by_id(
+            temp_dir.clone(),
+            "build".to_string(),
+            false,
+            |_| {},
+            |_, _| {},
+            |_| {},
+            |_| {},
+        )
+        .await;
+
+        assert!(res.is_err());
+        match res.unwrap_err() {
+            XCoreError::SecurityError(msg) => {
+                assert!(msg.contains("PermissionDenied") || msg.contains("untrusted"));
+            }
+            _ => panic!("Expected SecurityError for untrusted workspace"),
+        }
+
+        let _ = fs::remove_dir_all(&temp_dir);
     }
 }

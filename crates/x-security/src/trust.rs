@@ -55,6 +55,20 @@ pub fn validate_task_authorization(
     Ok(valid_cwd)
 }
 
+pub fn validate_toolchain_authorization(
+    workspace_root: &Path,
+    allow_untrusted_override: bool,
+) -> io::Result<()> {
+    let trust = get_workspace_trust(workspace_root);
+    if trust == WorkspaceTrustState::Untrusted && !allow_untrusted_override {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "Toolchain operation blocked: Workspace is untrusted and project toolchain activation/download requires explicit user authorization",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,12 +88,21 @@ mod tests {
         let res = validate_task_authorization(&temp_dir, &temp_dir, false);
         assert!(res.is_ok());
 
+        let toolchain_res = validate_toolchain_authorization(&temp_dir, false);
+        assert!(toolchain_res.is_ok());
+
         set_workspace_trust(&temp_dir, false);
         let res_blocked = validate_task_authorization(&temp_dir, &temp_dir, false);
         assert!(res_blocked.is_err());
 
+        let toolchain_blocked = validate_toolchain_authorization(&temp_dir, false);
+        assert!(toolchain_blocked.is_err());
+
         let res_override = validate_task_authorization(&temp_dir, &temp_dir, true);
         assert!(res_override.is_ok());
+
+        let toolchain_override = validate_toolchain_authorization(&temp_dir, true);
+        assert!(toolchain_override.is_ok());
 
         let _ = fs::remove_dir_all(&temp_dir);
     }

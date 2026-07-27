@@ -4,6 +4,8 @@ members = ["apps/desktop/src-tauri", "crates/*"]
 
 [profile.dev]
 debug = 0
+incremental = false
 
 [profile.test]
 debug = 0
+incremental = false

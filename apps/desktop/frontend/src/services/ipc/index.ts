@@ -34,8 +34,8 @@ export interface WorkspaceChangeEvent {
     path: string;
 }
 
-export type TaskType = 'build' | 'run' | 'clean' | 'custom';
-export type TaskState = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type TaskType = 'build' | 'run' | 'clean' | 'test' | 'custom';
+export type TaskState = 'idle' | 'resolving' | 'preparing' | 'starting' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'pending';
 export type ProblemSeverity = 'error' | 'warning' | 'info';
 
 export interface Task {
@@ -78,6 +78,45 @@ export interface TaskOutputPayload {
     data: string;
 }
 
+export type ToolchainStatus = 'available' | 'installed' | 'active' | 'invalid' | 'verificationfailed' | 'installing';
+export type VerificationState = 'checksumverified' | 'signatureverified' | 'installationvalidated';
+export type ToolchainScope = 'global' | 'user' | 'project';
+
+export interface ToolchainManifest {
+    id: string;
+    name: string;
+    language: string;
+    version: string;
+    platform: string;
+    architecture: string;
+    distribution: string;
+    source_url: string;
+    download_url: string;
+    sha256_checksum: string;
+    signature?: string;
+    license: string;
+    installation_path?: string;
+    executable_paths?: Record<string, string>;
+    environment_variables?: Record<string, string>;
+    capabilities?: string[];
+    scope: ToolchainScope;
+    status: ToolchainStatus;
+    verification_states: VerificationState[];
+}
+
+export interface ProjectToolchainRequirement {
+    language: string;
+    distribution: string;
+    version: string;
+}
+
+export interface ToolchainProgressPayload {
+    toolchain_id: string;
+    stage: string;
+    progress_percent: number;
+    message: string;
+}
+
 export const ipc = {
     workspace: {
         select: async (path: string): Promise<void> => {
@@ -117,6 +156,9 @@ export const ipc = {
         spawn: async (processId: string, command: string, args: string[], cwd?: string): Promise<string> => {
             return await invoke("process_spawn", { processId, command, args, cwd });
         },
+        spawnToolchainTerminal: async (processId: string, command: string, args: string[], cwd?: string): Promise<string> => {
+            return await invoke("process_spawn_toolchain_terminal", { processId, command, args, cwd });
+        },
         writeStdin: async (processId: string, input: string): Promise<void> => {
             return await invoke("process_write_stdin", { processId, input });
         },
@@ -134,8 +176,20 @@ export const ipc = {
         run: async (taskId: string, allowUntrusted?: boolean): Promise<string> => {
             return await invoke("task_run", { taskId, allowUntrusted });
         },
+        build: async (allowUntrusted?: boolean): Promise<string> => {
+            return await invoke("task_build", { allowUntrusted });
+        },
+        clean: async (allowUntrusted?: boolean): Promise<string> => {
+            return await invoke("task_clean", { allowUntrusted });
+        },
+        test: async (allowUntrusted?: boolean): Promise<string> => {
+            return await invoke("task_test", { allowUntrusted });
+        },
         cancel: async (executionId: string): Promise<void> => {
             return await invoke("task_cancel", { executionId });
+        },
+        clearHistory: async (): Promise<void> => {
+            return await invoke("task_clear_history");
         },
         history: async (): Promise<TaskExecution[]> => {
             return await invoke("task_history");
@@ -145,6 +199,29 @@ export const ipc = {
         },
         getTrust: async (): Promise<'Trusted' | 'Untrusted'> => {
             return await invoke("task_trust_get");
+        }
+    },
+    toolchain: {
+        listInstalled: async (): Promise<ToolchainManifest[]> => {
+            return await invoke("toolchain_list_installed");
+        },
+        listAvailable: async (): Promise<ToolchainManifest[]> => {
+            return await invoke("toolchain_list_available");
+        },
+        detect: async (): Promise<ToolchainManifest[]> => {
+            return await invoke("toolchain_detect");
+        },
+        getActive: async (): Promise<ToolchainManifest[]> => {
+            return await invoke("toolchain_get_active");
+        },
+        install: async (manifest: ToolchainManifest, scope: string, allowUntrusted?: boolean): Promise<ToolchainManifest> => {
+            return await invoke("toolchain_install", { manifest, scope, allowUntrusted });
+        },
+        uninstall: async (id: string): Promise<void> => {
+            return await invoke("toolchain_uninstall", { id });
+        },
+        setProjectRequirement: async (requirement: ProjectToolchainRequirement, allowUntrusted?: boolean): Promise<void> => {
+            return await invoke("toolchain_set_project", { requirement, allowUntrusted });
         }
     },
     events: {
@@ -171,6 +248,12 @@ export const ipc = {
         },
         onTaskCompleted: async (callback: EventCallback<TaskExecution>): Promise<UnlistenFn> => {
             return await listen<TaskExecution>("task://completed", callback);
+        },
+        onToolchainProgress: async (callback: EventCallback<ToolchainProgressPayload>): Promise<UnlistenFn> => {
+            return await listen<ToolchainProgressPayload>("toolchain://progress", callback);
+        },
+        onToolchainCompleted: async (callback: EventCallback<ToolchainManifest>): Promise<UnlistenFn> => {
+            return await listen<ToolchainManifest>("toolchain://completed", callback);
         }
     },
     settings: {

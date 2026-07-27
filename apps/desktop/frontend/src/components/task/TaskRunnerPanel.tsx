@@ -14,6 +14,9 @@ export const TaskRunnerPanel: React.FC = () => {
         loadTrustState,
         setWorkspaceTrust,
         runTask,
+        buildProject,
+        cleanProject,
+        testProject,
         cancelActiveTask,
         restartActiveTask,
         clearOutput,
@@ -43,6 +46,7 @@ export const TaskRunnerPanel: React.FC = () => {
     const buildTasks = tasks.filter((t) => t.task_type === "build");
     const runTasks = tasks.filter((t) => t.task_type === "run");
     const cleanTasks = tasks.filter((t) => t.task_type === "clean");
+    const testTasks = tasks.filter((t) => t.task_type === "test");
     const customTasks = tasks.filter((t) => t.task_type === "custom");
 
     return (
@@ -51,8 +55,40 @@ export const TaskRunnerPanel: React.FC = () => {
             <div className="flex items-center justify-between px-4 h-9 border-b border-[var(--border-primary)] bg-[var(--bg-primary)]">
                 <div className="flex items-center space-x-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center">
-                        <Hammer size={14} className="mr-1.5" /> Task Runner
+                        <Hammer size={14} className="mr-1.5" /> Task Runner & Build Output
                     </span>
+
+                    {/* Quick action buttons */}
+                    <div className="flex items-center space-x-1 border-l border-r border-[#333] px-2">
+                        <button
+                            onClick={() => buildProject()}
+                            className="px-2 py-0.5 text-xs bg-[#007acc] hover:bg-[#0062a3] text-white rounded font-medium"
+                            title="Build Active Project"
+                        >
+                            Build
+                        </button>
+                        <button
+                            onClick={() => runTasks.length > 0 ? runTask(runTasks[0].id, true) : buildProject()}
+                            className="px-2 py-0.5 text-xs bg-[#238636] hover:bg-[#2ea043] text-white rounded font-medium"
+                            title="Run Project"
+                        >
+                            Run
+                        </button>
+                        <button
+                            onClick={() => cleanProject()}
+                            className="px-2 py-0.5 text-xs bg-[#3c3c3c] hover:bg-[#4a4a4a] text-white rounded"
+                            title="Clean Project"
+                        >
+                            Clean
+                        </button>
+                        <button
+                            onClick={() => testProject()}
+                            className="px-2 py-0.5 text-xs bg-[#3c3c3c] hover:bg-[#4a4a4a] text-white rounded"
+                            title="Test Project"
+                        >
+                            Test
+                        </button>
+                    </div>
 
                     {/* Trust status badge */}
                     <button
@@ -83,10 +119,10 @@ export const TaskRunnerPanel: React.FC = () => {
                         <button
                             className="px-2 py-1 bg-red-600 hover:bg-red-500 text-white text-xs rounded flex items-center space-x-1"
                             onClick={cancelActiveTask}
-                            title="Cancel Task"
+                            title="Cancel Task Process Tree"
                         >
                             <Square size={12} />
-                            <span>Cancel</span>
+                            <span>Stop Process</span>
                         </button>
                     ) : (
                         <button
@@ -120,6 +156,7 @@ export const TaskRunnerPanel: React.FC = () => {
                     <TaskGroup title="Build" tasks={buildTasks} onRun={(id) => runTask(id, true)} />
                     <TaskGroup title="Run" tasks={runTasks} onRun={(id) => runTask(id, true)} />
                     <TaskGroup title="Clean" tasks={cleanTasks} onRun={(id) => runTask(id, true)} />
+                    <TaskGroup title="Test" tasks={testTasks} onRun={(id) => runTask(id, true)} />
                     <TaskGroup title="Custom" tasks={customTasks} onRun={(id) => runTask(id, true)} />
                 </div>
 

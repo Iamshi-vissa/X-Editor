@@ -7,13 +7,17 @@ pub enum TaskType {
     Build,
     Run,
     Clean,
+    Test,
     Custom,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TaskState {
-    Pending,
+    Idle,
+    Resolving,
+    Preparing,
+    Starting,
     Running,
     Succeeded,
     Failed,
