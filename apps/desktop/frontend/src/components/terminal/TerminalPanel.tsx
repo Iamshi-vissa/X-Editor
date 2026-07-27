@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTerminalStore } from "../../stores/useTerminalStore";
-import { Square, Trash2, Plus, Terminal as TerminalIcon } from "lucide-react";
+import { Square, Trash2, Plus, Terminal as TerminalIcon, Copy, Check } from "lucide-react";
 import clsx from "clsx";
 
 export const TerminalPanel: React.FC = () => {
@@ -17,6 +17,7 @@ export const TerminalPanel: React.FC = () => {
     } = useTerminalStore();
 
     const [inputVal, setInputVal] = useState("");
+    const [copied, setCopied] = useState(false);
     const [commandHistory, setCommandHistory] = useState<string[]>(() => {
         try {
             const saved = localStorage.getItem("x_editor_terminal_history");
@@ -47,6 +48,19 @@ export const TerminalPanel: React.FC = () => {
     if (!isPanelOpen) return null;
 
     const activeSession = sessions.find((s) => s.id === activeSessionId);
+
+    const handleCopyOutput = () => {
+        const selection = window.getSelection()?.toString();
+        const textToCopy = selection && selection.length > 0
+            ? selection
+            : (activeSession ? activeSession.output.join("\n") : "");
+
+        if (textToCopy) {
+            navigator.clipboard.writeText(textToCopy);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        }
+    };
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -158,6 +172,13 @@ export const TerminalPanel: React.FC = () => {
                     {activeSession && (
                         <>
                             <button
+                                className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                                onClick={handleCopyOutput}
+                                title={copied ? "Copied!" : "Copy Output / Selection"}
+                            >
+                                {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                            </button>
+                            <button
                                 className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                                 onClick={() => clearOutput(activeSession.id)}
                                 title="Clear Terminal Output"
@@ -179,11 +200,11 @@ export const TerminalPanel: React.FC = () => {
             </div>
 
             {/* Output Container */}
-            <div className="flex-1 p-3 overflow-y-auto font-mono text-xs text-gray-200 bg-transparent leading-relaxed hide-scrollbar">
+            <div className="flex-1 p-3 overflow-y-auto font-mono text-xs text-gray-200 bg-transparent leading-relaxed hide-scrollbar select-text cursor-text">
                 {panelTab === 'toolchain-logs' ? (
                     <div>
                         {toolchainLogs.map((log, i) => (
-                            <pre key={i} className="whitespace-pre-wrap font-mono text-[var(--accent-primary)]">
+                            <pre key={i} className="whitespace-pre-wrap font-mono text-[var(--accent-primary)] select-text cursor-text">
                                 {log}
                             </pre>
                         ))}
@@ -191,14 +212,14 @@ export const TerminalPanel: React.FC = () => {
                 ) : activeSession ? (
                     <div>
                         {activeSession.output.map((line, i) => (
-                            <pre key={i} className="whitespace-pre-wrap font-mono">
+                            <pre key={i} className="whitespace-pre-wrap font-mono select-text cursor-text">
                                 {line}
                             </pre>
                         ))}
                         <div ref={outputEndRef} />
                     </div>
                 ) : (
-                    <div className="flex items-center justify-center h-full text-[var(--text-muted)]">
+                    <div className="flex items-center justify-center h-full text-[var(--text-muted)] select-none">
                         No active terminal session. Click '+' to start one.
                     </div>
                 )}
