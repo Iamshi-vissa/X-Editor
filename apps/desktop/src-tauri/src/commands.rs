@@ -32,59 +32,95 @@ pub fn workspace_get() -> Result<Option<PathBuf>, XCoreError> {
 
 #[tauri::command]
 pub fn workspace_list_directory(path: String) -> Result<Vec<DirectoryEntry>, XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
-    let target = PathBuf::from(path);
-    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    let target = PathBuf::from(&path);
+    let valid_path = if let Some(workspace_root) = get_workspace() {
+        validate_path_in_workspace(&workspace_root, &target)?
+    } else {
+        if target.exists() {
+            set_workspace(target.clone());
+        }
+        target
+    };
     list_directory(&valid_path).map_err(Into::into)
 }
 
 #[tauri::command]
 pub fn filesystem_read_file(path: String) -> Result<String, XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
-    let target = PathBuf::from(path);
-    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    let target = PathBuf::from(&path);
+    let valid_path = if let Some(workspace_root) = get_workspace() {
+        validate_path_in_workspace(&workspace_root, &target)?
+    } else {
+        target
+    };
     read_file_content(&valid_path).map_err(Into::into)
 }
 
 #[tauri::command]
 pub fn filesystem_write_file(path: String, content: String) -> Result<(), XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
-    let target = PathBuf::from(path);
-    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    let target = PathBuf::from(&path);
+    let valid_path = if let Some(workspace_root) = get_workspace() {
+        validate_path_in_workspace(&workspace_root, &target)?
+    } else {
+        if let Some(parent) = target.parent() {
+            if parent.exists() {
+                set_workspace(parent.to_path_buf());
+            }
+        }
+        target
+    };
     write_file_content(&valid_path, &content).map_err(Into::into)
 }
 
 #[tauri::command]
 pub fn filesystem_create_file(path: String, content: Option<String>) -> Result<(), XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
-    let target = PathBuf::from(path);
-    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    let target = PathBuf::from(&path);
+    let valid_path = if let Some(workspace_root) = get_workspace() {
+        validate_path_in_workspace(&workspace_root, &target)?
+    } else {
+        if let Some(parent) = target.parent() {
+            if parent.exists() {
+                set_workspace(parent.to_path_buf());
+            }
+        }
+        target
+    };
     create_file(&valid_path, content.as_deref().unwrap_or("")).map_err(Into::into)
 }
 
 #[tauri::command]
 pub fn filesystem_create_dir(path: String) -> Result<(), XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
-    let target = PathBuf::from(path);
-    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    let target = PathBuf::from(&path);
+    let valid_path = if let Some(workspace_root) = get_workspace() {
+        validate_path_in_workspace(&workspace_root, &target)?
+    } else {
+        target
+    };
     create_directory(&valid_path).map_err(Into::into)
 }
 
 #[tauri::command]
 pub fn filesystem_rename(old_path: String, new_path: String) -> Result<(), XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
     let old_target = PathBuf::from(old_path);
     let new_target = PathBuf::from(new_path);
-    let valid_old = validate_path_in_workspace(&workspace_root, &old_target)?;
-    let valid_new = validate_path_in_workspace(&workspace_root, &new_target)?;
+    let (valid_old, valid_new) = if let Some(workspace_root) = get_workspace() {
+        (
+            validate_path_in_workspace(&workspace_root, &old_target)?,
+            validate_path_in_workspace(&workspace_root, &new_target)?,
+        )
+    } else {
+        (old_target, new_target)
+    };
     rename_path(&valid_old, &valid_new).map_err(Into::into)
 }
 
 #[tauri::command]
 pub fn filesystem_delete(path: String) -> Result<(), XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
-    let target = PathBuf::from(path);
-    let valid_path = validate_path_in_workspace(&workspace_root, &target)?;
+    let target = PathBuf::from(&path);
+    let valid_path = if let Some(workspace_root) = get_workspace() {
+        validate_path_in_workspace(&workspace_root, &target)?
+    } else {
+        target
+    };
     delete_path(&valid_path).map_err(Into::into)
 }
 
