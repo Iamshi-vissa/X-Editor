@@ -1,15 +1,17 @@
 import React from "react";
-import { Files, Search, Terminal as TerminalIcon, Hammer, AlertCircle, Settings } from "lucide-react";
+import { Files, Search, Terminal as TerminalIcon, Hammer, AlertCircle, Settings, Wrench } from "lucide-react";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { useSearchStore } from "../../stores/useSearchStore";
 import { useTerminalStore } from "../../stores/useTerminalStore";
 import { useTaskStore } from "../../stores/useTaskStore";
+import { useToolchainStore } from "../../stores/useToolchainStore";
 
 export const ActivityBar: React.FC = () => {
     const { theme, setTheme } = useSettingsStore();
     const { togglePanel: toggleSearch } = useSearchStore();
     const { togglePanel: toggleTerminal } = useTerminalStore();
     const { toggleTaskPanel, toggleProblemsPanel, problems } = useTaskStore();
+    const { togglePanel: toggleToolchain } = useToolchainStore();
 
     const errorCount = problems.filter((p) => p.severity === "error").length;
 
@@ -24,6 +26,13 @@ export const ActivityBar: React.FC = () => {
                 title="Search Workspace"
             >
                 <Search size={20} />
+            </button>
+            <button
+                className="p-2 mb-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                onClick={toggleToolchain}
+                title="Toolchain Manager"
+            >
+                <Wrench size={20} />
             </button>
             <button
                 className="p-2 mb-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"

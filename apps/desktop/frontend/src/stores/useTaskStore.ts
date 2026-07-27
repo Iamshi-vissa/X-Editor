@@ -19,6 +19,9 @@ interface TaskStore {
     loadTrustState: () => Promise<void>;
     setWorkspaceTrust: (trusted: boolean) => Promise<void>;
     runTask: (taskId: string, allowUntrusted?: boolean) => Promise<void>;
+    buildProject: () => Promise<void>;
+    cleanProject: () => Promise<void>;
+    testProject: () => Promise<void>;
     cancelActiveTask: () => Promise<void>;
     restartActiveTask: () => Promise<void>;
     clearOutput: () => void;
@@ -80,6 +83,36 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         }
     },
 
+    buildProject: async () => {
+        set({ isTaskPanelOpen: true, outputLines: [`[TaskRunner] Executing Build Project...`] });
+        try {
+            await ipc.task.build(true);
+        } catch (e) {
+            const errText = `\n[Build Error] ${e}`;
+            set((state) => ({ outputLines: [...state.outputLines, errText] }));
+        }
+    },
+
+    cleanProject: async () => {
+        set({ isTaskPanelOpen: true, outputLines: [`[TaskRunner] Executing Clean Project...`] });
+        try {
+            await ipc.task.clean(true);
+        } catch (e) {
+            const errText = `\n[Clean Error] ${e}`;
+            set((state) => ({ outputLines: [...state.outputLines, errText] }));
+        }
+    },
+
+    testProject: async () => {
+        set({ isTaskPanelOpen: true, outputLines: [`[TaskRunner] Executing Test Project...`] });
+        try {
+            await ipc.task.test(true);
+        } catch (e) {
+            const errText = `\n[Test Error] ${e}`;
+            set((state) => ({ outputLines: [...state.outputLines, errText] }));
+        }
+    },
+
     cancelActiveTask: async () => {
         const { activeExecution } = get();
         if (activeExecution) {
@@ -112,9 +145,12 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         });
 
         const unlistenOut = await ipc.events.onTaskOutput((evt: { payload: TaskOutputPayload }) => {
-            set((state) => ({
-                outputLines: [...state.outputLines, evt.payload.data],
-            }));
+            set((state) => {
+                const nextLines = [...state.outputLines, evt.payload.data];
+                // Keep max 1000 output chunks to prevent unbounded memory growth
+                const boundedLines = nextLines.length > 1000 ? nextLines.slice(nextLines.length - 1000) : nextLines;
+                return { outputLines: boundedLines };
+            });
         });
 
         const unlistenProb = await ipc.events.onTaskProblem((evt: { payload: Problem }) => {

@@ -2,15 +2,20 @@ use x_core::errors::XCoreError;
 use x_core::workspace::{get_workspace, set_workspace};
 use x_core::settings::AppSettings;
 use x_core::tasks::config::load_tasks_config;
-use x_core::tasks::model::{Task, TaskExecution};
-use x_core::tasks::runner::{run_task_by_id, cancel_task_execution, get_task_runner_state};
+use x_core::tasks::model::{Task, TaskExecution, TaskType};
+use x_core::tasks::runner::{run_task_by_id, run_task_by_type, cancel_task_execution, get_task_runner_state, clear_task_history};
+use x_core::toolchains::manifest::{ToolchainManifest, ToolchainScope, ProjectToolchainRequirement};
+use x_core::toolchains::registry::get_toolchain_registry;
+use x_core::toolchains::resolver::{load_project_toolchain_config, save_project_toolchain_config, resolve_active_project_toolchains};
+use x_core::toolchains::downloader::download_and_install_toolchain;
+use x_core::toolchains::environment::ResolvedToolchainEnvironment;
 use x_filesystem::directory::{list_directory, DirectoryEntry};
 use x_filesystem::file::{read_file_content, write_file_content};
 use x_filesystem::operations::{create_file, create_directory, rename_path, delete_path};
 use x_filesystem::search::{search_workspace, SearchResultMatch};
-use x_process::process_manager::{spawn_process, write_process_stdin, kill_process};
+use x_process::process_manager::{spawn_process, spawn_process_with_env, write_process_stdin, kill_process};
 use x_security::paths::validate_path_in_workspace;
-use x_security::trust::{get_workspace_trust, set_workspace_trust, WorkspaceTrustState};
+use x_security::trust::{get_workspace_trust, set_workspace_trust, validate_toolchain_authorization, WorkspaceTrustState};
 use std::path::PathBuf;
 use tauri::Emitter;
 
@@ -127,6 +132,46 @@ pub async fn process_spawn(
 }
 
 #[tauri::command]
+pub async fn process_spawn_toolchain_terminal(
+    app: tauri::AppHandle,
+    process_id: String,
+    command: String,
+    args: Vec<String>,
+    cwd: Option<String>,
+) -> Result<String, String> {
+    let workspace_root = get_workspace().ok_or_else(|| "Workspace not open".to_string())?;
+    let target_cwd = cwd.map(PathBuf::from).unwrap_or_else(|| workspace_root.clone());
+    let valid_cwd = validate_path_in_workspace(&workspace_root, &target_cwd)
+        .map_err(|e| e.to_string())?;
+
+    let active_toolchains = resolve_active_project_toolchains(&workspace_root);
+    let toolchain_env = ResolvedToolchainEnvironment::build(&active_toolchains);
+
+    let app_out = app.clone();
+    let app_err = app.clone();
+    let app_exit = app.clone();
+
+    spawn_process_with_env(
+        process_id.clone(),
+        command,
+        args,
+        valid_cwd,
+        Some(toolchain_env.env_map),
+        move |chunk| {
+            let _ = app_out.emit("process://stdout", chunk);
+        },
+        move |chunk| {
+            let _ = app_err.emit("process://stderr", chunk);
+        },
+        move |exit| {
+            let _ = app_exit.emit("process://exit", exit);
+        },
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn process_write_stdin(process_id: String, input: String) -> Result<(), String> {
     write_process_stdin(&process_id, &input).await.map_err(|e| e.to_string())
 }
@@ -192,8 +237,122 @@ pub async fn task_run(
 }
 
 #[tauri::command]
+pub async fn task_build(
+    app: tauri::AppHandle,
+    allow_untrusted: Option<bool>,
+) -> Result<String, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let allow = allow_untrusted.unwrap_or(false);
+
+    let app_start = app.clone();
+    let app_out = app.clone();
+    let app_prob = app.clone();
+    let app_done = app.clone();
+
+    run_task_by_type(
+        workspace_root,
+        TaskType::Build,
+        allow,
+        move |start_exec| {
+            let _ = app_start.emit("task://started", start_exec);
+        },
+        move |exec_id, chunk_text| {
+            let _ = app_out.emit("task://output", serde_json::json!({
+                "execution_id": exec_id,
+                "data": chunk_text
+            }));
+        },
+        move |problem| {
+            let _ = app_prob.emit("task://problem", problem);
+        },
+        move |done_exec| {
+            let _ = app_done.emit("task://completed", done_exec);
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn task_clean(
+    app: tauri::AppHandle,
+    allow_untrusted: Option<bool>,
+) -> Result<String, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let allow = allow_untrusted.unwrap_or(false);
+
+    let app_start = app.clone();
+    let app_out = app.clone();
+    let app_prob = app.clone();
+    let app_done = app.clone();
+
+    run_task_by_type(
+        workspace_root,
+        TaskType::Clean,
+        allow,
+        move |start_exec| {
+            let _ = app_start.emit("task://started", start_exec);
+        },
+        move |exec_id, chunk_text| {
+            let _ = app_out.emit("task://output", serde_json::json!({
+                "execution_id": exec_id,
+                "data": chunk_text
+            }));
+        },
+        move |problem| {
+            let _ = app_prob.emit("task://problem", problem);
+        },
+        move |done_exec| {
+            let _ = app_done.emit("task://completed", done_exec);
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn task_test(
+    app: tauri::AppHandle,
+    allow_untrusted: Option<bool>,
+) -> Result<String, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    let allow = allow_untrusted.unwrap_or(false);
+
+    let app_start = app.clone();
+    let app_out = app.clone();
+    let app_prob = app.clone();
+    let app_done = app.clone();
+
+    run_task_by_type(
+        workspace_root,
+        TaskType::Test,
+        allow,
+        move |start_exec| {
+            let _ = app_start.emit("task://started", start_exec);
+        },
+        move |exec_id, chunk_text| {
+            let _ = app_out.emit("task://output", serde_json::json!({
+                "execution_id": exec_id,
+                "data": chunk_text
+            }));
+        },
+        move |problem| {
+            let _ = app_prob.emit("task://problem", problem);
+        },
+        move |done_exec| {
+            let _ = app_done.emit("task://completed", done_exec);
+        },
+    )
+    .await
+}
+
+#[tauri::command]
 pub async fn task_cancel(execution_id: String) -> Result<(), XCoreError> {
     cancel_task_execution(&execution_id).await
+}
+
+#[tauri::command]
+pub fn task_clear_history() -> Result<(), XCoreError> {
+    clear_task_history();
+    Ok(())
 }
 
 #[tauri::command]
@@ -214,6 +373,84 @@ pub fn task_trust_set(trusted: bool) -> Result<(), XCoreError> {
 pub fn task_trust_get() -> Result<WorkspaceTrustState, XCoreError> {
     let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
     Ok(get_workspace_trust(&workspace_root))
+}
+
+// Toolchain Commands
+#[tauri::command]
+pub fn toolchain_list_installed() -> Result<Vec<ToolchainManifest>, XCoreError> {
+    let reg_arc = get_toolchain_registry();
+    let reg = reg_arc.lock().unwrap();
+    Ok(reg.list_installed_toolchains())
+}
+
+#[tauri::command]
+pub fn toolchain_list_available() -> Result<Vec<ToolchainManifest>, XCoreError> {
+    let reg_arc = get_toolchain_registry();
+    let reg = reg_arc.lock().unwrap();
+    Ok(reg.list_available_toolchains())
+}
+
+#[tauri::command]
+pub fn toolchain_detect() -> Result<Vec<ToolchainManifest>, XCoreError> {
+    let reg_arc = get_toolchain_registry();
+    let mut reg = reg_arc.lock().unwrap();
+    reg.scan_and_register_system_toolchains();
+    Ok(reg.list_installed_toolchains())
+}
+
+#[tauri::command]
+pub fn toolchain_get_active() -> Result<Vec<ToolchainManifest>, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    Ok(resolve_active_project_toolchains(&workspace_root))
+}
+
+#[tauri::command]
+pub async fn toolchain_install(
+    app: tauri::AppHandle,
+    manifest: ToolchainManifest,
+    scope: String,
+    allow_untrusted: Option<bool>,
+) -> Result<ToolchainManifest, XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    validate_toolchain_authorization(&workspace_root, allow_untrusted.unwrap_or(false))
+        .map_err(|e| XCoreError::SecurityError(e.to_string()))?;
+
+    let target_scope = match scope.as_str() {
+        "user" => ToolchainScope::User,
+        _ => ToolchainScope::Global,
+    };
+
+    let app_prog = app.clone();
+    let installed_manifest = download_and_install_toolchain(manifest, target_scope, move |progress| {
+        let _ = app_prog.emit("toolchain://progress", progress);
+    })
+    .await?;
+
+    let _ = app.emit("toolchain://completed", installed_manifest.clone());
+    Ok(installed_manifest)
+}
+
+#[tauri::command]
+pub fn toolchain_uninstall(id: String) -> Result<(), XCoreError> {
+    let reg_arc = get_toolchain_registry();
+    let mut reg = reg_arc.lock().unwrap();
+    reg.remove_installed_toolchain(&id)
+}
+
+#[tauri::command]
+pub fn toolchain_set_project(
+    requirement: ProjectToolchainRequirement,
+    allow_untrusted: Option<bool>,
+) -> Result<(), XCoreError> {
+    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
+    validate_toolchain_authorization(&workspace_root, allow_untrusted.unwrap_or(false))
+        .map_err(|e| XCoreError::SecurityError(e.to_string()))?;
+
+    let mut config = load_project_toolchain_config(&workspace_root);
+    config.toolchains.retain(|t| !t.language.eq_ignore_ascii_case(&requirement.language));
+    config.toolchains.push(requirement);
+
+    save_project_toolchain_config(&workspace_root, &config).map_err(XCoreError::Io)
 }
 
 #[tauri::command]

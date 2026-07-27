@@ -21,6 +21,12 @@ pub enum XCoreError {
     ProcessFailed(String),
     #[error("Security policy error: {0}")]
     SecurityError(String),
+    #[error("Toolchain not found: {0}")]
+    ToolchainNotFound(String),
+    #[error("Toolchain unavailable: {0}")]
+    ToolchainUnavailable(String),
+    #[error("Checksum mismatch: Expected {expected}, got {got}")]
+    ChecksumMismatch { expected: String, got: String },
     #[error("IO Error: {0}")]
     Io(String),
 }

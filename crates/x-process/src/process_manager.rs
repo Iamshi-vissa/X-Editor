@@ -45,12 +45,44 @@ where
     FErr: Fn(ProcessOutputChunk) + Send + Sync + 'static,
     FExit: Fn(ProcessExitPayload) + Send + Sync + 'static,
 {
+    spawn_process_with_env(
+        process_id,
+        command_str,
+        args,
+        cwd,
+        None,
+        on_stdout,
+        on_stderr,
+        on_exit,
+    )
+    .await
+}
+
+pub async fn spawn_process_with_env<FOut, FErr, FExit>(
+    process_id: String,
+    command_str: String,
+    args: Vec<String>,
+    cwd: PathBuf,
+    env: Option<HashMap<String, String>>,
+    on_stdout: FOut,
+    on_stderr: FErr,
+    on_exit: FExit,
+) -> Result<String, ProcessError>
+where
+    FOut: Fn(ProcessOutputChunk) + Send + Sync + 'static,
+    FErr: Fn(ProcessOutputChunk) + Send + Sync + 'static,
+    FExit: Fn(ProcessExitPayload) + Send + Sync + 'static,
+{
     let mut cmd = Command::new(&command_str);
     cmd.args(&args);
     cmd.current_dir(cwd);
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
     cmd.stdin(Stdio::piped());
+
+    if let Some(env_map) = env {
+        cmd.envs(env_map);
+    }
 
     #[cfg(windows)]
     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -166,7 +198,7 @@ pub async fn write_process_stdin(process_id: &str, input: &str) -> Result<(), Pr
     Err(ProcessError::ProcessNotFound(process_id.to_string()))
 }
 
-pub async fn kill_process(process_id: &str) -> Result<(), ProcessError> {
+pub async fn kill_process_tree(process_id: &str) -> Result<(), ProcessError> {
     let child_opt = {
         let registry = get_process_registry();
         let mut map = registry.lock().unwrap();
@@ -176,6 +208,21 @@ pub async fn kill_process(process_id: &str) -> Result<(), ProcessError> {
     if let Some(child_mutex) = child_opt {
         let mut guard = child_mutex.lock().await;
         if let Some(mut child) = guard.take() {
+            let pid = child.id();
+            if let Some(pid_num) = pid {
+                #[cfg(windows)]
+                {
+                    let _ = std::process::Command::new("taskkill")
+                        .args(["/F", "/T", "/PID", &pid_num.to_string()])
+                        .output();
+                }
+                #[cfg(unix)]
+                {
+                    let _ = std::process::Command::new("kill")
+                        .args(["-9", &format!("-{}", pid_num)])
+                        .output();
+                }
+            }
             let _ = child.kill().await;
             return Ok(());
         }
@@ -183,35 +230,35 @@ pub async fn kill_process(process_id: &str) -> Result<(), ProcessError> {
     Err(ProcessError::ProcessNotFound(process_id.to_string()))
 }
 
+pub async fn kill_process(process_id: &str) -> Result<(), ProcessError> {
+    kill_process_tree(process_id).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicBool, Ordering};
 
     #[tokio::test]
-    async fn test_spawn_and_kill_process() {
-        let stdout_called = Arc::new(AtomicBool::new(false));
-        let stdout_flag = stdout_called.clone();
-
+    async fn test_spawn_and_kill_process_tree() {
         #[cfg(windows)]
-        let (cmd, args) = ("cmd".to_string(), vec!["/C".to_string(), "echo hello".to_string()]);
+        let (cmd, args) = ("cmd.exe".to_string(), vec!["/C".to_string(), "ping 127.0.0.1 -n 20".to_string()]);
         #[cfg(not(windows))]
-        let (cmd, args) = ("echo".to_string(), vec!["hello".to_string()]);
+        let (cmd, args) = ("sleep".to_string(), vec!["20".to_string()]);
 
         let res = spawn_process(
-            "test_p1".to_string(),
+            "test_p_tree".to_string(),
             cmd,
             args,
             std::env::temp_dir(),
-            move |_chunk| {
-                stdout_flag.store(true, Ordering::SeqCst);
-            },
+            |_chunk| {},
             |_chunk| {},
             |_exit| {},
         ).await;
 
         assert!(res.is_ok());
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-        assert!(stdout_called.load(Ordering::SeqCst));
+
+        // Call kill_process_tree immediately while process is active in registry
+        let kill_res = kill_process_tree("test_p_tree").await;
+        assert!(kill_res.is_ok());
     }
 }
