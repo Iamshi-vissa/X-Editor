@@ -1,4 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+:root, :root.purple-dark, :root.dark {
+    --bg-primary: #0e0e14;
+    --bg-secondary: #141019;
+    --bg-editor: #0e0e14;
+    --bg-hover: #201a29;
+    --text-primary: #e4e0f0;
+    --text-secondary: #c4c0d4;
+    --text-muted: #7a7590;
+    --border-primary: #272230;
+    --accent-primary: #8b5cf6;
+    --accent-hover: #6d28d9;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+:root.vscode-dark {
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #252526;
+    --bg-editor: #1e1e1e;
+    --bg-hover: #37373d;
+    --text-primary: #cccccc;
+    --text-secondary: #9cdcfe;
+    --text-muted: #858585;
+    --border-primary: #2d2d2d;
+    --accent-primary: #007acc;
+    --accent-hover: #0098ff;
+}
+
+:root.cyberpunk {
+    --bg-primary: #0d0e15;
+    --bg-secondary: #12131c;
+    --bg-editor: #0d0e15;
+    --bg-hover: #1f2232;
+    --text-primary: #00ff9d;
+    --text-secondary: #ff007f;
+    --text-muted: #566185;
+    --border-primary: #272c42;
+    --accent-primary: #ff007f;
+    --accent-hover: #ff3399;
+}
 
 :root.light {
     --bg-primary: #ffffff;
@@ -9,34 +55,7 @@
     --text-secondary: #4b5563;
     --text-muted: #6b7280;
     --border-primary: #e5e7eb;
-    --accent-primary: #3b82f6;
-    --accent-hover: #2563eb;
+    --accent-primary: #8B5CF6;
+    --accent-hover: #A78BFA;
 }
 
-:root.dark {
-    --bg-primary: #1f2937;
-    --bg-secondary: #111827;
-    --bg-editor: #1e1e1e; /* Match monaco vs-dark */
-    --bg-hover: #374151;
-    --text-primary: #f9fafb;
-    --text-secondary: #d1d5db;
-    --text-muted: #9ca3af;
-    --border-primary: #374151;
-    --accent-primary: #3b82f6;
-    --accent-hover: #60a5fa;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg-primary: #1f2937;
-        --bg-secondary: #111827;
-        --bg-editor: #1e1e1e;
-        --bg-hover: #374151;
-        --text-primary: #f9fafb;
-        --text-secondary: #d1d5db;
-        --text-muted: #9ca3af;
-        --border-primary: #374151;
-        --accent-primary: #3b82f6;
-        --accent-hover: #60a5fa;
-    }
-}

@@ -6,4 +6,5 @@ export interface DocumentState {
     version: number;
     isDirty: boolean;
     encoding: string;
+    isPreview?: boolean;
 }
