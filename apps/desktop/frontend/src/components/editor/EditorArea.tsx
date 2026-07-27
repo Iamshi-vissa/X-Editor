@@ -39,23 +39,36 @@ export const EditorArea: React.FC = () => {
         if (!activeDoc) return;
         await saveDocument(activeDoc.id);
 
-        const path = activeDoc.path;
-        const ext = path.split('.').pop()?.toLowerCase() || '';
-        const exePath = path.replace(/\.[^/.]+$/, "") + (navigator.platform.includes("Win") ? ".exe" : "");
+        const currentDocs = useDocumentStore.getState().documents;
+        const doc = currentDocs.find(d => d.id === activeDoc.id) || activeDoc;
+
+        if (doc.path.startsWith("Untitled-")) {
+            alert("Please save your file to disk before running code.");
+            return;
+        }
+
+        const normalizedPath = doc.path.replace(/\\/g, "/");
+        const dir = normalizedPath.substring(0, normalizedPath.lastIndexOf("/"));
+        const filename = normalizedPath.substring(normalizedPath.lastIndexOf("/") + 1);
+        const basename = filename.includes(".") ? filename.substring(0, filename.lastIndexOf(".")) : filename;
+        const ext = filename.includes(".") ? filename.substring(filename.lastIndexOf(".") + 1).toLowerCase() : "";
+
+        const exeName = `${basename}_runner.exe`;
+        const exePath = dir ? `${dir}/${exeName}` : exeName;
 
         let cmd = "";
         if (ext === "c" || ext === "cpp") {
-            cmd = `gcc "${path}" -o "${exePath}" && "${exePath}"`;
+            cmd = `gcc "${normalizedPath}" -o "${exePath}" && "${exePath}"`;
         } else if (ext === "py") {
-            cmd = `python "${path}"`;
+            cmd = `python "${normalizedPath}"`;
         } else if (ext === "js") {
-            cmd = `node "${path}"`;
+            cmd = `node "${normalizedPath}"`;
         } else if (ext === "ts") {
-            cmd = `npx ts-node "${path}"`;
+            cmd = `npx ts-node "${normalizedPath}"`;
         } else if (ext === "rs") {
-            cmd = `rustc "${path}" -o "${exePath}" && "${exePath}"`;
+            cmd = `rustc "${normalizedPath}" -o "${exePath}" && "${exePath}"`;
         } else {
-            cmd = `echo Running ${path}...`;
+            cmd = `echo Running ${normalizedPath}...`;
         }
 
         if (!activeSessionId || sessions.length === 0) {
