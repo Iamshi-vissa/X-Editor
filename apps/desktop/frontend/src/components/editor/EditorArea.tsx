@@ -53,9 +53,8 @@ export const EditorArea: React.FC = () => {
         const basename = filename.includes(".") ? filename.substring(0, filename.lastIndexOf(".")) : filename;
         const ext = filename.includes(".") ? filename.substring(filename.lastIndexOf(".") + 1).toLowerCase() : "";
 
-        const tempDir = (window.navigator.platform.includes("Win") ? "C:/Windows/Temp" : "/tmp");
-        const exeName = `${basename}_runner.exe`;
-        const exePath = `${tempDir}/${exeName}`;
+        const exeName = `${basename}_bin.exe`;
+        const exePath = dir ? `${dir}/${exeName}` : exeName;
 
         let cmd = "";
         switch (ext) {
