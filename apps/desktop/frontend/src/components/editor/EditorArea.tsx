@@ -3,7 +3,8 @@ import { Tabs } from "../tabs/Tabs";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { MonacoAdapter } from "../../adapters/monaco/MonacoAdapter";
 import { useDocumentStore } from "../../stores/useDocumentStore";
-import { Columns, Map, WrapText, X } from "lucide-react";
+import { useTerminalStore } from "../../stores/useTerminalStore";
+import { Columns, Map, WrapText, X, Play } from "lucide-react";
 
 export const EditorArea: React.FC = () => {
     const {
@@ -14,6 +15,8 @@ export const EditorArea: React.FC = () => {
         toggleSplitView,
         saveDocument
     } = useDocumentStore();
+
+    const { sessions, activeSessionId, spawnTerminal, sendInput } = useTerminalStore();
 
     const [minimap, setMinimap] = useState(true);
     const [wordWrap, setWordWrap] = useState(false);
@@ -32,6 +35,36 @@ export const EditorArea: React.FC = () => {
     const activeDoc = documents.find(d => d.id === activeDocumentId);
     const secondaryDoc = documents.find(d => d.id === secondaryDocumentId);
 
+    const handleRunActiveFile = async () => {
+        if (!activeDoc) return;
+        await saveDocument(activeDoc.id);
+
+        const path = activeDoc.path;
+        const ext = path.split('.').pop()?.toLowerCase() || '';
+        const exePath = path.replace(/\.[^/.]+$/, "") + (navigator.platform.includes("Win") ? ".exe" : "");
+
+        let cmd = "";
+        if (ext === "c" || ext === "cpp") {
+            cmd = `gcc "${path}" -o "${exePath}" && "${exePath}"`;
+        } else if (ext === "py") {
+            cmd = `python "${path}"`;
+        } else if (ext === "js") {
+            cmd = `node "${path}"`;
+        } else if (ext === "ts") {
+            cmd = `npx ts-node "${path}"`;
+        } else if (ext === "rs") {
+            cmd = `rustc "${path}" -o "${exePath}" && "${exePath}"`;
+        } else {
+            cmd = `echo Running ${path}...`;
+        }
+
+        if (!activeSessionId || sessions.length === 0) {
+            await spawnTerminal("cmd.exe", ["/C", cmd]);
+        } else {
+            sendInput(activeSessionId, cmd);
+        }
+    };
+
     return (
         <div className="flex-1 flex flex-col bg-[var(--bg-editor)] overflow-hidden relative">
             <div className="flex items-center justify-between bg-[var(--bg-secondary)] border-b border-[var(--border-primary)]">
@@ -40,6 +73,14 @@ export const EditorArea: React.FC = () => {
                 </div>
                 {/* Editor Action Controls Bar */}
                 <div className="flex items-center space-x-1 px-3 border-l border-[var(--border-primary)] shrink-0 h-9 bg-[var(--bg-secondary)]">
+                    <button
+                        onClick={handleRunActiveFile}
+                        className="p-1.5 rounded transition-colors bg-[var(--accent-primary)] text-white hover:opacity-90 flex items-center space-x-1 text-xs font-semibold"
+                        title="Run Active File in Terminal"
+                    >
+                        <Play size={13} fill="currentColor" />
+                        <span>Run</span>
+                    </button>
                     <button
                         onClick={toggleSplitView}
                         className={`p-1.5 rounded transition-colors ${
