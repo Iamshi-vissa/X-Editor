@@ -1,71 +1,69 @@
-import React from "react";
-import { Files, Search, Terminal as TerminalIcon, Hammer, AlertCircle, Settings, Wrench } from "lucide-react";
-import { useSettingsStore } from "../../stores/useSettingsStore";
+import React, { useState } from "react";
+import { Files, Search, GitBranch, Blocks, Terminal as TerminalIcon, Hammer, AlertCircle, Palette, Wrench } from "lucide-react";
 import { useSearchStore } from "../../stores/useSearchStore";
 import { useTerminalStore } from "../../stores/useTerminalStore";
 import { useTaskStore } from "../../stores/useTaskStore";
 import { useToolchainStore } from "../../stores/useToolchainStore";
+import clsx from "clsx";
 
-export const ActivityBar: React.FC = () => {
-    const { theme, setTheme } = useSettingsStore();
+interface ActivityBarProps {
+    activePanel?: string;
+    onSelectPanel?: (panel: string) => void;
+    onOpenThemePicker?: () => void;
+}
+
+export const ActivityBar: React.FC<ActivityBarProps> = ({ activePanel = "explorer", onSelectPanel, onOpenThemePicker }) => {
     const { togglePanel: toggleSearch } = useSearchStore();
     const { togglePanel: toggleTerminal } = useTerminalStore();
     const { toggleTaskPanel, toggleProblemsPanel, problems } = useTaskStore();
     const { togglePanel: toggleToolchain } = useToolchainStore();
+    const [selectedIcon, setSelectedIcon] = useState<string>(activePanel);
 
     const errorCount = problems.filter((p) => p.severity === "error").length;
 
+    const IconWrapper = ({ id, title, icon: Icon, onClick, badge }: { id: string, title: string, icon: any, onClick?: () => void, badge?: React.ReactNode }) => {
+        const isActive = (activePanel || selectedIcon) === id;
+        return (
+            <div className="relative w-full flex justify-center mb-2">
+                {isActive && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--accent-primary)] rounded-r" />}
+                <button
+                    className={clsx(
+                        "p-2.5 rounded-lg transition-colors relative",
+                        isActive ? "text-[var(--accent-primary)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                    )}
+                    onClick={() => {
+                        setSelectedIcon(id);
+                        if (onSelectPanel) onSelectPanel(id);
+                        if (onClick) onClick();
+                    }}
+                    title={title}
+                >
+                    <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                    {badge}
+                </button>
+            </div>
+        );
+    };
+
     return (
-        <div className="w-12 bg-[var(--bg-secondary)] flex flex-col items-center py-2 border-r border-[var(--border-primary)] shrink-0">
-            <button className="p-2 mb-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]" title="Files Explorer">
-                <Files size={20} />
-            </button>
-            <button
-                className="p-2 mb-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                onClick={toggleSearch}
-                title="Search Workspace"
-            >
-                <Search size={20} />
-            </button>
-            <button
-                className="p-2 mb-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                onClick={toggleToolchain}
-                title="Toolchain Manager"
-            >
-                <Wrench size={20} />
-            </button>
-            <button
-                className="p-2 mb-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                onClick={toggleTaskPanel}
-                title="Task Runner"
-            >
-                <Hammer size={20} />
-            </button>
-            <button
-                className="p-2 mb-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] relative"
-                onClick={toggleProblemsPanel}
-                title="Problems"
-            >
-                <AlertCircle size={20} />
-                {errorCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
-                )}
-            </button>
-            <button
-                className="p-2 mb-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                onClick={toggleTerminal}
-                title="Toggle Terminal"
-            >
-                <TerminalIcon size={20} />
-            </button>
+        <div className="w-[52px] bg-[var(--bg-secondary)] flex flex-col items-center py-2 border-r border-[var(--border-primary)] shrink-0 z-10 select-none">
+            <IconWrapper id="explorer" title="Explorer" icon={Files} />
+            <IconWrapper id="search" title="Search" icon={Search} onClick={toggleSearch} />
+            <IconWrapper id="source-control" title="Source Control" icon={GitBranch} />
+            <IconWrapper id="extensions" title="Extensions Marketplace" icon={Blocks} />
+            
+            <div className="w-8 h-px bg-[var(--border-primary)] my-2 opacity-50" />
+            
+            <IconWrapper id="toolchain" title="Toolchain Manager" icon={Wrench} onClick={toggleToolchain} />
+            <IconWrapper id="tasks" title="Task Runner & Build Output" icon={Hammer} onClick={toggleTaskPanel} />
+            <IconWrapper id="problems" title="Problems" icon={AlertCircle} onClick={toggleProblemsPanel} badge={
+                errorCount > 0 ? <span className="absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-[var(--bg-secondary)]" /> : null
+            } />
+            <IconWrapper id="terminal" title="Integrated Terminal" icon={TerminalIcon} onClick={toggleTerminal} />
+            
             <div className="flex-1" />
-            <button
-                className="p-2 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                title="Toggle Theme"
-            >
-                <Settings size={20} />
-            </button>
+            <IconWrapper id="theme" title="Theme" icon={Palette} onClick={onOpenThemePicker} />
         </div>
     );
 };
+

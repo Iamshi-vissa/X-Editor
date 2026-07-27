@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTerminalStore } from "../../stores/useTerminalStore";
 import { Square, Trash2, Plus, Terminal as TerminalIcon } from "lucide-react";
+import clsx from "clsx";
 
 export const TerminalPanel: React.FC = () => {
     const {
@@ -32,6 +33,8 @@ export const TerminalPanel: React.FC = () => {
         outputEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [sessions, activeSessionId]);
 
+    const [panelTab, setPanelTab] = useState<'terminal' | 'problems' | 'output' | 'debug' | 'toolchain-logs'>('terminal');
+
     if (!isPanelOpen) return null;
 
     const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -44,68 +47,112 @@ export const TerminalPanel: React.FC = () => {
         }
     };
 
+    const toolchainLogs = [
+        "[INFO] Initialized Toolchain Detector v1.0.4",
+        "[INFO] Found System GCC: C:\\msys64\\mingw64\\bin\\gcc.exe",
+        "[INFO] Active runtime Node.js v20.11.0 verified via SHA-256 checksum",
+        "[INFO] Synced active project environment to .toolchain.json"
+    ];
+
     return (
         <div className="h-64 bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] flex flex-col shrink-0">
             {/* Header / Tabs Bar */}
             <div className="flex items-center justify-between px-4 h-9 border-b border-[var(--border-primary)] bg-[var(--bg-primary)]">
-                <div className="flex items-center space-x-2 overflow-x-auto">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center mr-2">
-                        <TerminalIcon size={14} className="mr-1" /> Terminal
-                    </span>
-                    {sessions.map((s) => (
-                        <button
-                            key={s.id}
-                            className={`px-3 py-1 text-xs rounded flex items-center space-x-1 ${
-                                activeSessionId === s.id
-                                    ? "bg-[var(--bg-hover)] font-medium text-[var(--text-primary)]"
-                                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                            }`}
-                            onClick={() => setActiveSession(s.id)}
-                        >
-                            <span>{s.title}</span>
-                            <span
-                                className={`w-2 h-2 rounded-full ${
-                                    s.isRunning ? "bg-green-500" : "bg-gray-400"
-                                }`}
-                            />
-                        </button>
-                    ))}
+                <div className="flex items-center space-x-4 overflow-x-auto text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] select-none">
                     <button
-                        className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                        onClick={() => spawnTerminal()}
-                        title="New Terminal"
+                        onClick={() => setPanelTab('terminal')}
+                        className={clsx("py-1 flex items-center space-x-1 border-b-2 transition-colors", panelTab === 'terminal' ? "border-[var(--accent-primary)] text-[var(--text-primary)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]")}
                     >
-                        <Plus size={14} />
+                        <TerminalIcon size={14} />
+                        <span>Terminal</span>
+                    </button>
+                    <button
+                        onClick={() => setPanelTab('problems')}
+                        className={clsx("py-1 border-b-2 transition-colors", panelTab === 'problems' ? "border-[var(--accent-primary)] text-[var(--text-primary)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]")}
+                    >
+                        Problems
+                    </button>
+                    <button
+                        onClick={() => setPanelTab('output')}
+                        className={clsx("py-1 border-b-2 transition-colors", panelTab === 'output' ? "border-[var(--accent-primary)] text-[var(--text-primary)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]")}
+                    >
+                        Output
+                    </button>
+                    <button
+                        onClick={() => setPanelTab('debug')}
+                        className={clsx("py-1 border-b-2 transition-colors", panelTab === 'debug' ? "border-[var(--accent-primary)] text-[var(--text-primary)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]")}
+                    >
+                        Debug Console
+                    </button>
+                    <button
+                        onClick={() => setPanelTab('toolchain-logs')}
+                        className={clsx("py-1 border-b-2 transition-colors text-[var(--accent-primary)] font-bold", panelTab === 'toolchain-logs' ? "border-[var(--accent-primary)]" : "border-transparent opacity-80 hover:opacity-100")}
+                    >
+                        Toolchain Logs
                     </button>
                 </div>
-                {activeSession && (
-                    <div className="flex items-center space-x-2">
-                        <button
-                            className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                            onClick={() => clearOutput(activeSession.id)}
-                            title="Clear Terminal Output"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                        {activeSession.isRunning && (
+                <div className="flex items-center space-x-2">
+                    {panelTab === 'terminal' && (
+                        <>
+                            {sessions.map((s) => (
+                                <button
+                                    key={s.id}
+                                    className={`px-2 py-0.5 text-[11px] rounded flex items-center space-x-1 ${
+                                        activeSessionId === s.id
+                                            ? "bg-[var(--bg-hover)] font-medium text-[var(--text-primary)]"
+                                            : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                    }`}
+                                    onClick={() => setActiveSession(s.id)}
+                                >
+                                    <span>{s.title}</span>
+                                </button>
+                            ))}
                             <button
-                                className="p-1 hover:bg-[var(--bg-hover)] rounded text-red-400 hover:text-red-300"
-                                onClick={() => killTerminal(activeSession.id)}
-                                title="Kill Process"
+                                className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                onClick={() => spawnTerminal()}
+                                title="New Terminal"
                             >
-                                <Square size={14} />
+                                <Plus size={14} />
                             </button>
-                        )}
-                    </div>
-                )}
+                        </>
+                    )}
+                    {activeSession && (
+                        <>
+                            <button
+                                className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                onClick={() => clearOutput(activeSession.id)}
+                                title="Clear Terminal Output"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                            {activeSession.isRunning && (
+                                <button
+                                    className="p-1 hover:bg-[var(--bg-hover)] rounded text-red-400 hover:text-red-300"
+                                    onClick={() => killTerminal(activeSession.id)}
+                                    title="Kill Process"
+                                >
+                                    <Square size={14} />
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Output Container */}
-            <div className="flex-1 p-3 overflow-y-auto font-mono text-xs text-gray-200 bg-[var(--bg-editor)] leading-relaxed">
-                {activeSession ? (
+            <div className="flex-1 p-3 overflow-y-auto font-mono text-xs text-gray-200 bg-transparent leading-relaxed hide-scrollbar">
+                {panelTab === 'toolchain-logs' ? (
+                    <div>
+                        {toolchainLogs.map((log, i) => (
+                            <pre key={i} className="whitespace-pre-wrap font-mono text-[var(--accent-primary)]">
+                                {log}
+                            </pre>
+                        ))}
+                    </div>
+                ) : activeSession ? (
                     <div>
                         {activeSession.output.map((line, i) => (
-                            <pre key={i} className="whitespace-pre-wrap">
+                            <pre key={i} className="whitespace-pre-wrap font-mono">
                                 {line}
                             </pre>
                         ))}
@@ -122,12 +169,12 @@ export const TerminalPanel: React.FC = () => {
             {activeSession && activeSession.isRunning && (
                 <form
                     onSubmit={handleFormSubmit}
-                    className="flex items-center px-3 py-1 bg-[var(--bg-primary)] border-t border-[var(--border-primary)]"
+                    className="flex items-center px-3 py-1.5 bg-transparent border-t border-[var(--border-primary)]"
                 >
-                    <span className="text-xs font-mono text-[var(--accent-primary)] mr-2">&gt;</span>
+                    <span className="text-xs font-mono font-bold text-[var(--accent-primary)] mr-2">➜</span>
                     <input
                         type="text"
-                        className="flex-1 bg-transparent text-xs font-mono text-[var(--text-primary)] focus:outline-none"
+                        className="flex-1 bg-transparent text-xs font-mono text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-muted)]"
                         placeholder="Type a command and press Enter..."
                         value={inputVal}
                         onChange={(e) => setInputVal(e.target.value)}

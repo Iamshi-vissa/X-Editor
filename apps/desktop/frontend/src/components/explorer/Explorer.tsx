@@ -3,52 +3,72 @@ import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { ipc } from "../../services/ipc";
 import type { DirectoryEntry } from "../../services/ipc";
 import { useDocumentStore } from "../../stores/useDocumentStore";
-import { Folder, FolderOpen, FileText, FilePlus, FolderPlus, Edit2, Trash2 } from "lucide-react";
+import { ChevronRight, ChevronDown, FileText, FilePlus, FolderPlus } from "lucide-react";
+import clsx from "clsx";
+
+import { ContextMenu } from "../common/ContextMenu";
 
 export const Explorer: React.FC = () => {
-    const { root, selectWorkspace, createFile, createDirectory } = useWorkspaceStore();
+    const { root, createFile, createDirectory } = useWorkspaceStore();
+
+    const handleOpenFolder = async () => {
+        try {
+            const { open } = await import("@tauri-apps/plugin-dialog");
+            const selected = await open({ directory: true });
+            if (selected && typeof selected === "string") {
+                await useWorkspaceStore.getState().selectWorkspace(selected);
+            }
+        } catch {
+            const path = prompt("Enter folder absolute path:");
+            if (path) useWorkspaceStore.getState().selectWorkspace(path);
+        }
+    };
 
     return (
-        <div className="w-64 bg-[var(--bg-primary)] border-r border-[var(--border-primary)] flex flex-col shrink-0">
-            <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center justify-between border-b border-[var(--border-primary)]">
+        <div className="w-64 bg-[var(--bg-secondary)] border-r border-[var(--border-primary)] flex flex-col shrink-0">
+            <div className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center justify-between select-none border-b border-[var(--border-primary)] bg-[var(--bg-primary)]">
                 <span>Explorer</span>
-                {root && (
-                    <div className="flex items-center space-x-1">
-                        <button
-                            className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                            onClick={() => {
-                                const name = prompt("New file name:");
-                                if (name) createFile(root, name);
-                            }}
-                            title="New File"
-                        >
-                            <FilePlus size={14} />
-                        </button>
-                        <button
-                            className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                            onClick={() => {
-                                const name = prompt("New directory name:");
-                                if (name) createDirectory(root, name);
-                            }}
-                            title="New Folder"
-                        >
-                            <FolderPlus size={14} />
-                        </button>
-                    </div>
-                )}
+                <div className="flex items-center space-x-1">
+                    <button
+                        className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                        onClick={handleOpenFolder}
+                        title="Open Folder Workspace"
+                    >
+                        <FolderPlus size={14} />
+                    </button>
+                    {root && (
+                        <>
+                            <button
+                                className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                                onClick={() => {
+                                    const name = prompt("New file name:");
+                                    if (name) createFile(root, name);
+                                }}
+                                title="New File in Root"
+                            >
+                                <FilePlus size={14} />
+                            </button>
+                            <button
+                                className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                                onClick={() => {
+                                    const name = prompt("New directory name:");
+                                    if (name) createDirectory(root, name);
+                                }}
+                                title="New Folder in Root"
+                            >
+                                <FolderPlus size={14} className="text-[var(--accent-primary)]" />
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto hide-scrollbar pb-4">
                 {!root ? (
-                    <div className="p-4">
+                    <div className="p-4 flex flex-col items-center justify-center h-full text-center text-[var(--text-muted)]">
+                        <p className="text-sm mb-4">You have not yet opened a folder.</p>
                         <button
-                            className="bg-[var(--accent-primary)] text-white px-4 py-2 rounded text-xs hover:bg-[var(--accent-hover)] w-full font-medium"
-                            onClick={async () => {
-                                const { open } = await import("@tauri-apps/plugin-dialog");
-                                const selected = await open({ directory: true });
-                                if (selected && typeof selected === "string") {
-                                    await selectWorkspace(selected);
-                                }
-                            }}
+                            className="bg-[var(--accent-primary)] text-white px-4 py-2 rounded text-[13px] hover:bg-[var(--accent-hover)] w-full font-medium transition-colors"
+                            onClick={handleOpenFolder}
                         >
                             Open Folder
                         </button>
@@ -74,7 +94,7 @@ const DirectoryTree: React.FC<{ path: string; isRoot?: boolean }> = ({ path, isR
     }, [path, refreshCounter]);
 
     return (
-        <div className={isRoot ? "" : "pl-3"}>
+        <div className={isRoot ? "" : "pl-3 border-l border-[var(--border-primary)] ml-3"}>
             {entries.map((e) => (
                 <TreeItem key={e.path} entry={e} onOpen={() => (e.is_dir ? null : openDocument(e.path))} />
             ))}
@@ -84,10 +104,20 @@ const DirectoryTree: React.FC<{ path: string; isRoot?: boolean }> = ({ path, isR
 
 const TreeItem: React.FC<{ entry: DirectoryEntry; onOpen: () => void }> = ({ entry, onOpen }) => {
     const [expanded, setExpanded] = useState(false);
-    const { renameItem, deleteItem, createFile, createDirectory } = useWorkspaceStore();
+    const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
 
-    const handleRename = (e: React.MouseEvent) => {
+    const { renameItem, deleteItem, createFile, createDirectory } = useWorkspaceStore();
+    const { activeDocumentId } = useDocumentStore();
+    
+    const isActive = activeDocumentId === entry.path;
+
+    const handleContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
+        setMenuPos({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleRename = () => {
         const newName = prompt("Rename to:", entry.name);
         if (newName && newName !== entry.name) {
             const parent = entry.path.substring(0, entry.path.lastIndexOf("/"));
@@ -96,29 +126,29 @@ const TreeItem: React.FC<{ entry: DirectoryEntry; onOpen: () => void }> = ({ ent
         }
     };
 
-    const handleDelete = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleDelete = () => {
         if (confirm(`Delete ${entry.name}?`)) {
             deleteItem(entry.path);
         }
     };
 
-    const handleNewFile = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleNewFile = () => {
         const name = prompt("New file name:");
         if (name) createFile(entry.path, name);
     };
 
-    const handleNewFolder = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleNewFolder = () => {
         const name = prompt("New directory name:");
         if (name) createDirectory(entry.path, name);
     };
 
     return (
-        <div>
+        <div onContextMenu={handleContextMenu}>
             <div
-                className="flex items-center justify-between px-3 py-1 cursor-pointer hover:bg-[var(--bg-hover)] group rounded text-xs select-none"
+                className={clsx(
+                    "flex items-center justify-between px-1 py-1 cursor-pointer group text-[13px] select-none transition-colors",
+                    isActive ? "bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] font-medium" : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                )}
                 onClick={() => {
                     if (entry.is_dir) setExpanded(!expanded);
                     else onOpen();
@@ -127,37 +157,32 @@ const TreeItem: React.FC<{ entry: DirectoryEntry; onOpen: () => void }> = ({ ent
                 <div className="flex items-center flex-1 truncate mr-2">
                     {entry.is_dir ? (
                         expanded ? (
-                            <FolderOpen size={14} className="mr-1.5 text-[var(--accent-primary)] shrink-0" />
+                            <ChevronDown size={14} className="mr-1 shrink-0 opacity-70" />
                         ) : (
-                            <Folder size={14} className="mr-1.5 text-[var(--accent-primary)] shrink-0" />
+                            <ChevronRight size={14} className="mr-1 shrink-0 opacity-70" />
                         )
                     ) : (
-                        <FileText size={14} className="mr-1.5 text-[var(--text-muted)] shrink-0" />
+                        <FileText size={14} className={clsx("mr-1.5 shrink-0 ml-1", isActive ? "text-[var(--accent-primary)]" : "text-[var(--text-muted)]")} />
                     )}
-                    <span className="truncate text-[var(--text-primary)]">{entry.name}</span>
-                </div>
-
-                <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 text-[var(--text-muted)] shrink-0">
-                    {entry.is_dir && (
-                        <>
-                            <button className="hover:text-[var(--text-primary)] p-0.5" onClick={handleNewFile} title="New File">
-                                <FilePlus size={12} />
-                            </button>
-                            <button className="hover:text-[var(--text-primary)] p-0.5" onClick={handleNewFolder} title="New Folder">
-                                <FolderPlus size={12} />
-                            </button>
-                        </>
-                    )}
-                    <button className="hover:text-[var(--text-primary)] p-0.5" onClick={handleRename} title="Rename">
-                        <Edit2 size={12} />
-                    </button>
-                    <button className="hover:text-red-400 p-0.5" onClick={handleDelete} title="Delete">
-                        <Trash2 size={12} />
-                    </button>
+                    <span className="truncate">{entry.name}</span>
                 </div>
             </div>
 
             {entry.is_dir && expanded && <DirectoryTree path={entry.path} />}
+
+            {menuPos && (
+                <ContextMenu
+                    x={menuPos.x}
+                    y={menuPos.y}
+                    path={entry.path}
+                    isDir={entry.is_dir}
+                    onClose={() => setMenuPos(null)}
+                    onNewFile={handleNewFile}
+                    onNewFolder={handleNewFolder}
+                    onRename={handleRename}
+                    onDelete={handleDelete}
+                />
+            )}
         </div>
     );
 };

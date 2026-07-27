@@ -1,1 +1,1 @@
-{ "name": "x-editor", "private": true, "workspaces": ["apps/desktop/frontend", "packages/*"] }
+{"name":"x-editor","private":true,"workspaces":["apps/desktop/frontend","packages/*"],"devDependencies":{"@tauri-apps/cli":"^2.11.4"}}
