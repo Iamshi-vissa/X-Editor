@@ -53,8 +53,9 @@ export const EditorArea: React.FC = () => {
         const basename = filename.includes(".") ? filename.substring(0, filename.lastIndexOf(".")) : filename;
         const ext = filename.includes(".") ? filename.substring(filename.lastIndexOf(".") + 1).toLowerCase() : "";
 
+        const tempDir = (window.navigator.platform.includes("Win") ? "C:/Windows/Temp" : "/tmp");
         const exeName = `${basename}_runner.exe`;
-        const exePath = dir ? `${dir}/${exeName}` : exeName;
+        const exePath = `${tempDir}/${exeName}`;
 
         let cmd = "";
         switch (ext) {
@@ -113,10 +114,11 @@ export const EditorArea: React.FC = () => {
                 break;
         }
 
-        if (!activeSessionId || sessions.length === 0) {
-            await spawnTerminal("cmd.exe", ["/C", cmd]);
+        const activeSession = sessions.find((s) => s.id === activeSessionId);
+        if (!activeSession || !activeSession.isRunning) {
+            await spawnTerminal("cmd.exe", ["/K", cmd]);
         } else {
-            sendInput(activeSessionId, cmd);
+            sendInput(activeSession.id, cmd);
         }
     };
 
