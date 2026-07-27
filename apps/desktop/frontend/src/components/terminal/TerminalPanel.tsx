@@ -17,6 +17,15 @@ export const TerminalPanel: React.FC = () => {
     } = useTerminalStore();
 
     const [inputVal, setInputVal] = useState("");
+    const [commandHistory, setCommandHistory] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem("x_editor_terminal_history");
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [historyIndex, setHistoryIndex] = useState<number>(-1);
     const outputEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -41,9 +50,39 @@ export const TerminalPanel: React.FC = () => {
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (activeSessionId && inputVal.trim()) {
-            sendInput(activeSessionId, inputVal);
+        const trimmed = inputVal.trim();
+        if (activeSessionId && trimmed) {
+            sendInput(activeSessionId, trimmed);
+            const newHistory = [...commandHistory.filter((c) => c !== trimmed), trimmed];
+            setCommandHistory(newHistory);
+            try {
+                localStorage.setItem("x_editor_terminal_history", JSON.stringify(newHistory.slice(-100)));
+            } catch (err) {
+                console.error("Failed to save terminal history", err);
+            }
+            setHistoryIndex(-1);
             setInputVal("");
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "ArrowUp") {
+            e.preventDefault();
+            if (commandHistory.length === 0) return;
+            const nextIdx = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+            setHistoryIndex(nextIdx);
+            setInputVal(commandHistory[nextIdx] || "");
+        } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            if (historyIndex === -1) return;
+            const nextIdx = historyIndex + 1;
+            if (nextIdx >= commandHistory.length) {
+                setHistoryIndex(-1);
+                setInputVal("");
+            } else {
+                setHistoryIndex(nextIdx);
+                setInputVal(commandHistory[nextIdx] || "");
+            }
         }
     };
 
@@ -178,6 +217,7 @@ export const TerminalPanel: React.FC = () => {
                         placeholder="Type a command and press Enter..."
                         value={inputVal}
                         onChange={(e) => setInputVal(e.target.value)}
+                        onKeyDown={handleKeyDown}
                     />
                 </form>
             )}
