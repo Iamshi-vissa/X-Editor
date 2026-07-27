@@ -57,18 +57,60 @@ export const EditorArea: React.FC = () => {
         const exePath = dir ? `${dir}/${exeName}` : exeName;
 
         let cmd = "";
-        if (ext === "c" || ext === "cpp") {
-            cmd = `gcc "${normalizedPath}" -o "${exePath}" && "${exePath}"`;
-        } else if (ext === "py") {
-            cmd = `python "${normalizedPath}"`;
-        } else if (ext === "js") {
-            cmd = `node "${normalizedPath}"`;
-        } else if (ext === "ts") {
-            cmd = `npx ts-node "${normalizedPath}"`;
-        } else if (ext === "rs") {
-            cmd = `rustc "${normalizedPath}" -o "${exePath}" && "${exePath}"`;
-        } else {
-            cmd = `echo Running ${normalizedPath}...`;
+        switch (ext) {
+            case "c":
+                cmd = `gcc "${normalizedPath}" -o "${exePath}" && "${exePath}"`;
+                break;
+            case "cpp":
+            case "cc":
+            case "cxx":
+                cmd = `g++ "${normalizedPath}" -o "${exePath}" && "${exePath}"`;
+                break;
+            case "py":
+            case "pyw":
+                cmd = `python "${normalizedPath}"`;
+                break;
+            case "js":
+            case "mjs":
+            case "cjs":
+                cmd = `node "${normalizedPath}"`;
+                break;
+            case "ts":
+            case "tsx":
+            case "jsx":
+                cmd = `npx ts-node "${normalizedPath}"`;
+                break;
+            case "rs":
+                cmd = `rustc "${normalizedPath}" -o "${exePath}" && "${exePath}"`;
+                break;
+            case "go":
+                cmd = `go run "${normalizedPath}"`;
+                break;
+            case "java":
+                cmd = `javac "${normalizedPath}" && java -cp "${dir || '.'}" ${basename}`;
+                break;
+            case "php":
+                cmd = `php "${normalizedPath}"`;
+                break;
+            case "rb":
+                cmd = `ruby "${normalizedPath}"`;
+                break;
+            case "ps1":
+                cmd = `powershell -ExecutionPolicy Bypass -File "${normalizedPath}"`;
+                break;
+            case "bat":
+            case "cmd":
+                cmd = `"${normalizedPath}"`;
+                break;
+            case "sh":
+                cmd = `bash "${normalizedPath}"`;
+                break;
+            case "cs":
+                cmd = `dotnet run`;
+                break;
+            default:
+                cmd = `echo Executing ${normalizedPath}...`;
+                break;
         }
 
         if (!activeSessionId || sessions.length === 0) {
