@@ -23,6 +23,8 @@ interface TerminalStore {
     setupListeners: () => Promise<() => void>;
 }
 
+let isTerminalListenersSetup = false;
+
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
     sessions: [],
     activeSessionId: null,
@@ -88,6 +90,11 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     },
 
     setupListeners: async () => {
+        if (isTerminalListenersSetup) {
+            return () => {};
+        }
+        isTerminalListenersSetup = true;
+
         const unlistenOut = await ipc.events.onStdout((event: { payload: ProcessOutputChunk }) => {
             get().appendOutput(event.payload.process_id, event.payload.data);
         });
@@ -112,6 +119,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
             unlistenOut();
             unlistenErr();
             unlistenExit();
+            isTerminalListenersSetup = false;
         };
     },
 }));
