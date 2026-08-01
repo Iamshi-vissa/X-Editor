@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Terminal, Hammer, Wrench, Palette, Save, FolderOpen, AlertCircle, Files, GitBranch, Blocks } from "lucide-react";
+import { Search, Terminal, Hammer, Wrench, Palette, Save, AlertCircle, GitBranch, Blocks, HelpCircle, Keyboard, BookOpen, Info } from "lucide-react";
 import { useDocumentStore } from "../../stores/useDocumentStore";
 import { useTaskStore } from "../../stores/useTaskStore";
 import { useTerminalStore } from "../../stores/useTerminalStore";
@@ -21,6 +21,7 @@ interface CommandPaletteProps {
     onOpenThemePicker: () => void;
     onOpenSourceControl: () => void;
     onOpenExtensions: () => void;
+    onOpenHelp?: (tab?: "overview" | "shortcuts" | "docs" | "about") => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -28,14 +29,15 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     onClose,
     onOpenThemePicker,
     onOpenSourceControl,
-    onOpenExtensions
+    onOpenExtensions,
+    onOpenHelp
 }) => {
     const [query, setQuery] = useState("");
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const { activeDocumentId, saveDocument } = useDocumentStore();
-    const { buildProject, cleanProject, testProject, toggleTaskPanel, toggleProblemsPanel } = useTaskStore();
+    const { buildProject, cleanProject, testProject, toggleProblemsPanel } = useTaskStore();
     const { togglePanel: toggleTerminal } = useTerminalStore();
     const { togglePanel: toggleToolchain, detectSystemToolchains } = useToolchainStore();
     const { togglePanel: toggleSearch } = useSearchStore();
@@ -140,6 +142,35 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             category: "Preferences",
             icon: Palette,
             action: () => onOpenThemePicker()
+        },
+        {
+            id: "help-overview",
+            label: "Help: Welcome & Quick Start",
+            category: "Help",
+            icon: HelpCircle,
+            action: () => onOpenHelp?.("overview")
+        },
+        {
+            id: "help-shortcuts",
+            label: "Help: Keyboard Shortcuts Reference",
+            category: "Help",
+            shortcut: "Ctrl+H",
+            icon: Keyboard,
+            action: () => onOpenHelp?.("shortcuts")
+        },
+        {
+            id: "help-docs",
+            label: "Help: Documentation & Features Guide",
+            category: "Help",
+            icon: BookOpen,
+            action: () => onOpenHelp?.("docs")
+        },
+        {
+            id: "help-about",
+            label: "Help: About X-Editor",
+            category: "Help",
+            icon: Info,
+            action: () => onOpenHelp?.("about")
         }
     ];
 
@@ -203,18 +234,18 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                                     onMouseEnter={() => setSelectedIndex(idx)}
                                     className={`flex items-center justify-between px-3 py-2 rounded text-xs cursor-pointer transition-colors ${
                                         isSelected
-                                            ? "bg-[var(--accent-primary)] text-white font-medium"
+                                            ? "bg-[var(--accent-primary)] text-[var(--accent-text)] font-medium"
                                             : "hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
                                     }`}
                                 >
                                     <div className="flex items-center space-x-3 truncate">
-                                        <Icon className={`w-4 h-4 shrink-0 ${isSelected ? "text-white" : "text-[var(--accent-primary)]"}`} />
+                                        <Icon className={`w-4 h-4 shrink-0 ${isSelected ? "text-[var(--accent-text)]" : "text-[var(--accent-primary)]"}`} />
                                         <span className="truncate">{cmd.label}</span>
                                     </div>
                                     {cmd.shortcut && (
                                         <span
                                             className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ml-2 ${
-                                                isSelected ? "bg-white/20 text-white" : "bg-[var(--bg-hover)] text-[var(--text-muted)]"
+                                                isSelected ? "bg-black/20 text-[var(--accent-text)]" : "bg-[var(--bg-hover)] text-[var(--text-muted)]"
                                             }`}
                                         >
                                             {cmd.shortcut}

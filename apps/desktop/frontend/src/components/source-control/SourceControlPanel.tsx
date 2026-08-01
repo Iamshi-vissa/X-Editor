@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { GitBranch, GitCommit, Check, RefreshCw, Plus, Minus, FileCode } from "lucide-react";
+import { GitBranch, GitCommit, Check, RefreshCw, Plus, FileCode } from "lucide-react";
 
 export const SourceControlPanel: React.FC = () => {
     const [commitMessage, setCommitMessage] = useState("");

@@ -14,7 +14,8 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ isOpen, 
 
     const themes = [
         { id: "purple-dark", name: "Purple Dark (X Editor Signature)", color: "#8B5CF6", bg: "#1A1A24" },
-        { id: "vscode-dark", name: "VS Code Dark Plus", color: "#007acc", bg: "#1e1e1e" },
+        { id: "monochrome", name: "Grey Black & White (Monochrome)", color: "#ffffff", bg: "#000000" },
+        { id: "vscode-dark", name: "Dark Plus", color: "#007acc", bg: "#1e1e1e" },
         { id: "cyberpunk", name: "Cyberpunk Midnight", color: "#ff007f", bg: "#0d0e15" },
         { id: "light", name: "Light Modern", color: "#8B5CF6", bg: "#ffffff" }
     ];

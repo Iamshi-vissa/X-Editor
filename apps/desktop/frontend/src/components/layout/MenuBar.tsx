@@ -4,7 +4,23 @@ import { useTaskStore } from "../../stores/useTaskStore";
 import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { useTerminalStore } from "../../stores/useTerminalStore";
 
-export const MenuBar: React.FC = () => {
+interface MenuItem {
+    label: string;
+    shortcut?: string;
+    action: () => void;
+    disabled?: boolean;
+}
+
+interface MenuCategory {
+    name: string;
+    items: MenuItem[];
+}
+
+interface MenuBarProps {
+    onOpenHelp?: (tab?: "overview" | "shortcuts" | "docs" | "about") => void;
+}
+
+export const MenuBar: React.FC<MenuBarProps> = ({ onOpenHelp }) => {
     const { activeDocumentId, saveDocument, toggleSplitView, createNewDocument, openDocument } = useDocumentStore();
     const { buildProject, toggleTaskPanel, tasks, runTask } = useTaskStore();
     const { selectWorkspace } = useWorkspaceStore();
@@ -53,7 +69,44 @@ export const MenuBar: React.FC = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const menus = [
+    const triggerEditAction = (action: "undo" | "redo" | "cut" | "copy" | "paste" | "find" | "replace") => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const editor = (window as any).activeMonacoEditor;
+        if (editor) {
+            editor.focus();
+            switch (action) {
+                case "undo":
+                    editor.trigger("menu", "undo", null);
+                    break;
+                case "redo":
+                    editor.trigger("menu", "redo", null);
+                    break;
+                case "cut":
+                    document.execCommand("cut");
+                    break;
+                case "copy":
+                    document.execCommand("copy");
+                    break;
+                case "paste":
+                    document.execCommand("paste");
+                    break;
+                case "find":
+                    editor.trigger("menu", "actions.find", null);
+                    break;
+                case "replace":
+                    editor.trigger("menu", "editor.action.startFindReplaceAction", null);
+                    break;
+            }
+        } else {
+            try {
+                document.execCommand(action);
+            } catch (e) {
+                console.error("Exec command failed:", e);
+            }
+        }
+    };
+
+    const menus: MenuCategory[] = [
         {
             name: "File",
             items: [
@@ -83,6 +136,67 @@ export const MenuBar: React.FC = () => {
                         setActiveMenu(null);
                     },
                     disabled: !activeDocumentId
+                }
+            ]
+        },
+        {
+            name: "Edit",
+            items: [
+                {
+                    label: "Undo",
+                    shortcut: "Ctrl+Z",
+                    action: () => {
+                        triggerEditAction("undo");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "Redo",
+                    shortcut: "Ctrl+Y",
+                    action: () => {
+                        triggerEditAction("redo");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "Cut",
+                    shortcut: "Ctrl+X",
+                    action: () => {
+                        triggerEditAction("cut");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "Copy",
+                    shortcut: "Ctrl+C",
+                    action: () => {
+                        triggerEditAction("copy");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "Paste",
+                    shortcut: "Ctrl+V",
+                    action: () => {
+                        triggerEditAction("paste");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "Find...",
+                    shortcut: "Ctrl+F",
+                    action: () => {
+                        triggerEditAction("find");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "Replace...",
+                    shortcut: "Ctrl+H",
+                    action: () => {
+                        triggerEditAction("replace");
+                        setActiveMenu(null);
+                    }
                 }
             ]
         },
@@ -147,7 +261,40 @@ export const MenuBar: React.FC = () => {
                 }
             }
         ] },
-        { name: "Help", items: [] }
+        { 
+            name: "Help", 
+            items: [
+                {
+                    label: "Welcome & Quick Start",
+                    action: () => {
+                        onOpenHelp?.("overview");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "Keyboard Shortcuts",
+                    shortcut: "Ctrl+H",
+                    action: () => {
+                        onOpenHelp?.("shortcuts");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "Documentation & Features",
+                    action: () => {
+                        onOpenHelp?.("docs");
+                        setActiveMenu(null);
+                    }
+                },
+                {
+                    label: "About X-Editor",
+                    action: () => {
+                        onOpenHelp?.("about");
+                        setActiveMenu(null);
+                    }
+                }
+            ] 
+        }
     ];
 
     return (
@@ -187,7 +334,7 @@ export const MenuBar: React.FC = () => {
                                         className={`px-3 py-1.5 text-[12px] flex items-center justify-between ${
                                             item.disabled 
                                                 ? 'opacity-50 cursor-not-allowed' 
-                                                : 'cursor-pointer hover:bg-[var(--accent-primary)] hover:text-white'
+                                                : 'cursor-pointer hover:bg-[var(--accent-primary)] hover:text-[var(--accent-text)]'
                                         }`}
                                     >
                                         <span>{item.label}</span>

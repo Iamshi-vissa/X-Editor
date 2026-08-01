@@ -131,7 +131,7 @@ export const EditorArea: React.FC = () => {
                 <div className="flex items-center space-x-1 px-3 border-l border-[var(--border-primary)] shrink-0 h-9 bg-[var(--bg-secondary)]">
                     <button
                         onClick={handleRunActiveFile}
-                        className="p-1.5 rounded transition-colors bg-[var(--accent-primary)] text-white hover:opacity-90 flex items-center space-x-1 text-xs font-semibold"
+                        className="p-1.5 rounded transition-colors bg-[var(--accent-primary)] text-[var(--accent-text)] hover:opacity-90 flex items-center space-x-1 text-xs font-semibold"
                         title="Run Active File in Terminal"
                     >
                         <Play size={13} fill="currentColor" />
@@ -141,7 +141,7 @@ export const EditorArea: React.FC = () => {
                         onClick={toggleSplitView}
                         className={`p-1.5 rounded transition-colors ${
                             isSplitView
-                                ? "bg-[var(--accent-primary)] text-white"
+                                ? "bg-[var(--accent-primary)] text-[var(--accent-text)]"
                                 : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                         }`}
                         title="Split Editor Right"
