@@ -219,9 +219,12 @@ pub async fn process_kill(process_id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn task_list() -> Result<Vec<Task>, XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
-    let config = load_tasks_config(&workspace_root);
-    Ok(config.tasks)
+    let tasks = if let Some(workspace_root) = get_workspace() {
+        load_tasks_config(&workspace_root).tasks
+    } else {
+        load_tasks_config(std::path::Path::new("")).tasks
+    };
+    Ok(tasks)
 }
 
 #[tauri::command]
@@ -407,8 +410,12 @@ pub fn task_trust_set(trusted: bool) -> Result<(), XCoreError> {
 
 #[tauri::command]
 pub fn task_trust_get() -> Result<WorkspaceTrustState, XCoreError> {
-    let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
-    Ok(get_workspace_trust(&workspace_root))
+    let trust = if let Some(workspace_root) = get_workspace() {
+        get_workspace_trust(&workspace_root)
+    } else {
+        WorkspaceTrustState::Untrusted
+    };
+    Ok(trust)
 }
 
 // Toolchain Commands
