@@ -9,7 +9,6 @@ export const SearchPanel: React.FC = () => {
         isContentSearch,
         results,
         isSearching,
-        isPanelOpen,
         setQuery,
         setIsContentSearch,
         togglePanel,
@@ -17,8 +16,6 @@ export const SearchPanel: React.FC = () => {
     } = useSearchStore();
 
     const { openDocument } = useDocumentStore();
-
-    if (!isPanelOpen) return null;
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
@@ -64,7 +61,7 @@ export const SearchPanel: React.FC = () => {
                         <span>Match file content</span>
                     </label>
                     <button
-                        className="px-2 py-0.5 bg-[var(--accent-primary)] text-white text-xs rounded hover:bg-[var(--accent-hover)]"
+                        className="px-2 py-0.5 bg-[var(--accent-primary)] text-[var(--accent-text)] text-xs rounded hover:bg-[var(--accent-hover)] font-medium"
                         onClick={performSearch}
                     >
                         Search

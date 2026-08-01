@@ -67,7 +67,7 @@ export const Explorer: React.FC = () => {
                     <div className="p-4 flex flex-col items-center justify-center h-full text-center text-[var(--text-muted)]">
                         <p className="text-sm mb-4">You have not yet opened a folder.</p>
                         <button
-                            className="bg-[var(--accent-primary)] text-white px-4 py-2 rounded text-[13px] hover:bg-[var(--accent-hover)] w-full font-medium transition-colors"
+                            className="bg-[var(--accent-primary)] text-[var(--accent-text)] px-4 py-2 rounded text-[13px] hover:bg-[var(--accent-hover)] w-full font-medium transition-colors"
                             onClick={handleOpenFolder}
                         >
                             Open Folder

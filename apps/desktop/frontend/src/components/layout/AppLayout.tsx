@@ -13,19 +13,24 @@ import { StatusBar } from "../status-bar/StatusBar";
 import { TitleBar } from "./TitleBar";
 import { MenuBar } from "./MenuBar";
 import { ThemeSelectorModal } from "./ThemeSelectorModal";
+import { HelpModal } from "./HelpModal";
 import { CommandPalette } from "../command-palette/CommandPalette";
 import { QuickFileOpenModal } from "../command-palette/QuickFileOpenModal";
-import { useToolchainStore } from "../../stores/useToolchainStore";
-
 import { useDocumentStore } from "../../stores/useDocumentStore";
 
 export const AppLayout: React.FC = () => {
-    const { isPanelOpen: isToolchainOpen } = useToolchainStore();
     const { createNewDocument } = useDocumentStore();
-    const [activeSidePanel, setActiveSidePanel] = useState<string>("explorer");
+    const [activeSidePanel, setActiveSidePanel] = useState<string | null>("explorer");
     const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+    const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+    const [helpInitialTab, setHelpInitialTab] = useState<"overview" | "shortcuts" | "docs" | "about">("overview");
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isQuickFileOpen, setIsQuickFileOpen] = useState(false);
+
+    const handleOpenHelp = (tab?: "overview" | "shortcuts" | "docs" | "about") => {
+        setHelpInitialTab(tab || "overview");
+        setIsHelpModalOpen(true);
+    };
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,6 +43,13 @@ export const AppLayout: React.FC = () => {
             } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "n")) {
                 e.preventDefault();
                 createNewDocument();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "w")) {
+                e.preventDefault();
+                const activeId = useDocumentStore.getState().activeDocumentId;
+                if (activeId) useDocumentStore.getState().closeDocument(activeId);
+            } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "h")) {
+                e.preventDefault();
+                handleOpenHelp("shortcuts");
             } else if (e.key === "F1") {
                 e.preventDefault();
                 setIsCommandPaletteOpen((prev) => !prev);
@@ -49,15 +61,19 @@ export const AppLayout: React.FC = () => {
     }, [createNewDocument]);
 
     const handleSelectPanel = (panelId: string) => {
-        if (["explorer", "search", "source-control", "extensions"].includes(panelId)) {
-            setActiveSidePanel(panelId);
+        if (["explorer", "search", "source-control", "extensions", "toolchain"].includes(panelId)) {
+            if (activeSidePanel === panelId) {
+                setActiveSidePanel(null);
+            } else {
+                setActiveSidePanel(panelId);
+            }
         }
     };
 
     return (
         <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans select-none">
             <TitleBar onOpenQuickFile={() => setIsQuickFileOpen(true)} />
-            <MenuBar />
+            <MenuBar onOpenHelp={handleOpenHelp} />
             <div className="flex flex-1 overflow-hidden relative">
                 <ActivityBar
                     activePanel={activeSidePanel}
@@ -65,18 +81,12 @@ export const AppLayout: React.FC = () => {
                     onOpenThemePicker={() => setIsThemeModalOpen(true)}
                 />
 
-                {/* Primary Left Side Panels */}
+                {/* Primary Left Side Panels (Replacing each other cleanly) */}
                 {activeSidePanel === "explorer" && <Explorer />}
                 {activeSidePanel === "search" && <SearchPanel />}
                 {activeSidePanel === "source-control" && <SourceControlPanel />}
                 {activeSidePanel === "extensions" && <ExtensionsPanel />}
-
-                {/* Secondary Toolchain Manager Overlay Panel */}
-                {isToolchainOpen && (
-                    <div className="w-80 border-r border-[var(--border-primary)] shrink-0 z-20">
-                        <ToolchainManagerPanel />
-                    </div>
-                )}
+                {activeSidePanel === "toolchain" && <ToolchainManagerPanel />}
 
                 {/* Central Editor and Bottom Output Panels */}
                 <div className="flex-1 flex flex-col overflow-hidden">
@@ -90,12 +100,18 @@ export const AppLayout: React.FC = () => {
 
             {/* Modals & Command Palette Overlay */}
             <ThemeSelectorModal isOpen={isThemeModalOpen} onClose={() => setIsThemeModalOpen(false)} />
+            <HelpModal 
+                isOpen={isHelpModalOpen} 
+                onClose={() => setIsHelpModalOpen(false)} 
+                initialTab={helpInitialTab} 
+            />
             <CommandPalette
                 isOpen={isCommandPaletteOpen}
                 onClose={() => setIsCommandPaletteOpen(false)}
                 onOpenThemePicker={() => setIsThemeModalOpen(true)}
                 onOpenSourceControl={() => setActiveSidePanel("source-control")}
                 onOpenExtensions={() => setActiveSidePanel("extensions")}
+                onOpenHelp={handleOpenHelp}
             />
             <QuickFileOpenModal
                 isOpen={isQuickFileOpen}

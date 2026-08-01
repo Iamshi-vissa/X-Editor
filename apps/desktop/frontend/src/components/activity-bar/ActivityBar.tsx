@@ -1,28 +1,23 @@
-import React, { useState } from "react";
+import React from "react";
 import { Files, Search, GitBranch, Blocks, Terminal as TerminalIcon, Hammer, AlertCircle, Palette, Wrench } from "lucide-react";
-import { useSearchStore } from "../../stores/useSearchStore";
 import { useTerminalStore } from "../../stores/useTerminalStore";
 import { useTaskStore } from "../../stores/useTaskStore";
-import { useToolchainStore } from "../../stores/useToolchainStore";
 import clsx from "clsx";
 
 interface ActivityBarProps {
-    activePanel?: string;
+    activePanel?: string | null;
     onSelectPanel?: (panel: string) => void;
     onOpenThemePicker?: () => void;
 }
 
 export const ActivityBar: React.FC<ActivityBarProps> = ({ activePanel = "explorer", onSelectPanel, onOpenThemePicker }) => {
-    const { togglePanel: toggleSearch } = useSearchStore();
     const { togglePanel: toggleTerminal } = useTerminalStore();
     const { toggleTaskPanel, toggleProblemsPanel, problems } = useTaskStore();
-    const { togglePanel: toggleToolchain } = useToolchainStore();
-    const [selectedIcon, setSelectedIcon] = useState<string>(activePanel);
 
     const errorCount = problems.filter((p) => p.severity === "error").length;
 
     const IconWrapper = ({ id, title, icon: Icon, onClick, badge }: { id: string, title: string, icon: any, onClick?: () => void, badge?: React.ReactNode }) => {
-        const isActive = (activePanel || selectedIcon) === id;
+        const isActive = activePanel === id;
         return (
             <div className="relative w-full flex justify-center mb-2">
                 {isActive && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--accent-primary)] rounded-r" />}
@@ -32,9 +27,11 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ activePanel = "explore
                         isActive ? "text-[var(--accent-primary)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                     )}
                     onClick={() => {
-                        setSelectedIcon(id);
-                        if (onSelectPanel) onSelectPanel(id);
-                        if (onClick) onClick();
+                        if (onClick) {
+                            onClick();
+                        } else if (onSelectPanel) {
+                            onSelectPanel(id);
+                        }
                     }}
                     title={title}
                 >
@@ -47,14 +44,14 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ activePanel = "explore
 
     return (
         <div className="w-[52px] bg-[var(--bg-secondary)] flex flex-col items-center py-2 border-r border-[var(--border-primary)] shrink-0 z-10 select-none">
-            <IconWrapper id="explorer" title="Explorer" icon={Files} />
-            <IconWrapper id="search" title="Search" icon={Search} onClick={toggleSearch} />
-            <IconWrapper id="source-control" title="Source Control" icon={GitBranch} />
-            <IconWrapper id="extensions" title="Extensions Marketplace" icon={Blocks} />
+            <IconWrapper id="explorer" title="Explorer" icon={Files} onClick={() => onSelectPanel?.("explorer")} />
+            <IconWrapper id="search" title="Search" icon={Search} onClick={() => onSelectPanel?.("search")} />
+            <IconWrapper id="source-control" title="Source Control" icon={GitBranch} onClick={() => onSelectPanel?.("source-control")} />
+            <IconWrapper id="extensions" title="Extensions Marketplace" icon={Blocks} onClick={() => onSelectPanel?.("extensions")} />
             
             <div className="w-8 h-px bg-[var(--border-primary)] my-2 opacity-50" />
             
-            <IconWrapper id="toolchain" title="Toolchain Manager" icon={Wrench} onClick={toggleToolchain} />
+            <IconWrapper id="toolchain" title="Toolchain Manager" icon={Wrench} onClick={() => onSelectPanel?.("toolchain")} />
             <IconWrapper id="tasks" title="Task Runner & Build Output" icon={Hammer} onClick={toggleTaskPanel} />
             <IconWrapper id="problems" title="Problems" icon={AlertCircle} onClick={toggleProblemsPanel} badge={
                 errorCount > 0 ? <span className="absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-[var(--bg-secondary)]" /> : null

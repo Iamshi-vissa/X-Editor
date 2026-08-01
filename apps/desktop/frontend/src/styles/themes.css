@@ -17,6 +17,7 @@
     --border-primary: #272230;
     --accent-primary: #8b5cf6;
     --accent-hover: #6d28d9;
+    --accent-text: #ffffff;
     font-family: 'Inter', system-ui, sans-serif;
 }
 
@@ -31,6 +32,7 @@
     --border-primary: #2d2d2d;
     --accent-primary: #007acc;
     --accent-hover: #0098ff;
+    --accent-text: #ffffff;
 }
 
 :root.cyberpunk {
@@ -44,6 +46,21 @@
     --border-primary: #272c42;
     --accent-primary: #ff007f;
     --accent-hover: #ff3399;
+    --accent-text: #ffffff;
+}
+
+:root.monochrome, :root.grey-black-white {
+    --bg-primary: #000000;
+    --bg-secondary: #121212;
+    --bg-editor: #000000;
+    --bg-hover: #262626;
+    --text-primary: #ffffff;
+    --text-secondary: #d4d4d4;
+    --text-muted: #888888;
+    --border-primary: #2a2a2a;
+    --accent-primary: #ffffff;
+    --accent-hover: #e5e5e5;
+    --accent-text: #000000;
 }
 
 :root.light {
@@ -57,5 +74,6 @@
     --border-primary: #e5e7eb;
     --accent-primary: #8B5CF6;
     --accent-hover: #A78BFA;
+    --accent-text: #ffffff;
 }
 
