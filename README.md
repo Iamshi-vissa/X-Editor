@@ -9,6 +9,8 @@
 
 **X-Editor** is an enterprise-grade, local-first code editor and development environment engineered for maximum execution speed, deep toolchain control, and zero-latency code navigation. Built on a strongly decoupled architecture combining **React 18**, **TypeScript**, **Tailwind CSS v4**, **Monaco Editor**, and **Tauri v2 IPC** with a multi-crate **Rust Core Engine**, X-Editor delivers workstation-class desktop IDE capabilities paired with custom runtime management.
 
+![X-Editor Interface Preview](docs/assets/x-editor-preview.png)
+
 ---
 
 ## 🏛️ Executive Summary & System Philosophy
