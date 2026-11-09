@@ -1,147 +1,72 @@
 # X-Editor
 
-**A High-Performance, Local-First Desktop IDE with Integrated Toolchain Management**
+A desktop code editor that also manages the languages and runtimes your projects need.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Rust Core](https://img.shields.io/badge/Rust%20Core-1.75%2B-orange.svg)](https://www.rust-lang.org/)
-[![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript-61DAFB.svg)](https://react.dev/)
-[![Desktop Engine](https://img.shields.io/badge/Desktop%20Engine-Tauri%20v2-24C8D8.svg)](https://tauri.app/)
+![X-Editor interface](docs/assets/x-editor-preview.png)
 
-![X-Editor Interface Preview](docs/assets/x-editor-preview.png)
+## About
 
----
+Most editors leave runtimes to separate tools like `nvm`, `pyenv` and `rustup`. X-Editor puts them
+in the same place as your code. It reads what a project expects (for example the Node version in
+`package.json` or the Python version in `.python-version`), compares it with what's installed, and
+can install or switch to the right version for you.
 
-## Overview
+It's built with Tauri, so the interface is a React app and the heavy work (files, processes,
+toolchains) runs in Rust on background threads, which keeps the editor responsive.
 
-X-Editor is a local-first code editor engineered for execution speed, deep toolchain control, and zero-latency code navigation. It combines a React 18 / TypeScript / Tailwind CSS v4 / Monaco Editor frontend with a multi-crate Rust core, connected through Tauri v2 IPC, to deliver a workstation-class desktop IDE with native runtime management built in.
+## Features
 
-Conventional editors treat runtime management as an external concern, requiring developers to coordinate separate CLI tools (`nvm`, `pyenv`, `rustup`) alongside their editor. X-Editor removes that separation by unifying code editing and runtime lifecycle management within a single native application.
+- **Editing:** Monaco editor (the one in VS Code), tabs, split view, breadcrumbs, minimap and
+  bracket colouring
+- **Command palette** (`Ctrl+Shift+P`) and quick file open (`Ctrl+P`)
+- **Toolchains:** detects Node.js, Python, Rust, Go and GCC, flags version mismatches, and installs
+  or activates the right version with live progress
+- **Terminal:** multiple tabs with live input and output
+- **Build tasks and Problems panel:** runs build and test tasks, and turns GCC, `rustc` and `tsc`
+  errors into a clickable list that jumps to the right line
+- **Search** across file names and file contents
+- **Themes:** Purple Dark, Cyberpunk Midnight and Light Modern
+- **Workspace safety:** every file path is checked so the app can't read or write outside the open
+  folder, and untrusted folders can't run tasks until you trust them
 
-### Design Goals
+## How it works
 
-| Goal | Implementation |
+The interface sends requests to the Rust side through Tauri's IPC. The Rust code is split into four
+small libraries:
+
+| Crate | Job |
 |---|---|
-| **Local-first security** | Sandboxed file access validation via the `x-security` crate, preventing unauthorized disk access |
-| **Non-blocking I/O** | Terminal streaming, file watching, and compiler processes run on background OS threads (`x-process`, `x-filesystem`), preserving a 60fps UI loop |
-| **Active environment resolution** | Continuous validation of project manifests (`package.json` engines, `.python-version`, `Cargo.toml`) against installed system runtimes, with one-click remediation |
+| `x-core` | Build tasks, the problem matcher and the toolchain manager |
+| `x-filesystem` | Reading and writing files, search and watching for changes |
+| `x-process` | Starting programs and streaming their output to the terminal |
+| `x-security` | Path checks and workspace trust |
 
----
+## Tech stack
 
-## Feature Guide
+- **Desktop shell:** Tauri v2
+- **Core:** Rust
+- **Interface:** React, TypeScript, Tailwind CSS v4, Monaco Editor, Zustand
 
-### 1. Theming — Black & Violet Design System
+## Getting started
 
-A custom design token schema (`themeTokens.ts`) drives the editor's visual language:
+You need:
 
-| Element | Color | Value |
-|---|---|---|
-| Editor background | Deep obsidian | `#0e0e14` |
-| Sidebar / surface panels | Low-contrast dark violet | `#141019` |
-| Primary accent | Signature violet | `#8b5cf6` |
-| Keywords | | `#a855f7` |
-| Strings | | `#c4b5fd` |
-| Functions | | `#d8b4fe` |
-| Types / classes | | `#e9d5ff` |
-| Comments | | `#7a7590` |
-| Numbers | | `#c084fc` |
-| Variables | | `#e4e0f0` |
+- Node.js 18 or newer
+- Rust 1.75 or newer (install with [rustup](https://rustup.rs))
+- A C/C++ compiler: MinGW-w64 on Windows, Xcode Command Line Tools on macOS, or GCC/Clang on Linux
+- On Linux, the WebKitGTK development packages that Tauri needs. On Debian or Ubuntu:
+  `sudo apt install libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev`
 
-Switch themes via the **Palette** icon in the Activity Bar, which opens the Color Theme Picker with **Purple Dark**, **Cyberpunk Midnight**, and **Light Modern** presets.
-
-### 2. Multi-Pane Editing & Navigation
-
-- **Split Editor View** (`Ctrl+\`) — dual side-by-side Monaco instances for simultaneous multi-file editing
-- **Tab management** — pinned tabs, dirty-state indicators (`•`), close-on-hover
-- **Breadcrumb navigation** — interactive file path hierarchy below the tab bar
-- **Minimap & bracket-pair colorization** — real-time structural visualization along the editor's right edge
-
-### 3. Command Palette & Quick Open
-
-- **Command Palette** (`Ctrl+Shift+P` / `F1`) — fuzzy search across IDE commands, build tasks, toolchain detections, and preferences
-- **Quick Open** (`Ctrl+P`) — instant file navigation by workspace path
-
-### 4. Toolchain Management Engine
-
-- **Runtime discovery** — automatic detection of installed compilers and runtimes (Node.js, Python, Rust via `cargo`/`rustc`, Go, GCC/MinGW)
-- **Version mismatch resolution** — flags discrepancies between project manifests and active toolchains
-- **One-click fix** — activates the required runtime version and writes a synchronized `.toolchain.json` to the workspace root
-- **Toolchain logs panel** — streams installation, compilation, and sync logs to the bottom drawer
-
-### 5. Integrated Terminal & Development Panels
-
-- **Multi-tab terminal** (`` Ctrl+` ``) — embedded PowerShell/CMD sessions with interactive stdin/stdout streaming
-- **Compiler problem matcher** — parses GCC, `rustc`, and `tsc` output into the Problems panel; clicking an entry jumps the editor to the exact line and column
-- **Source control (Git)** — branch status, staged/unstaged diffs, and inline commit/push
-- **Extensions marketplace** — manage development extensions (Rust Analyzer, C/C++ IntelliSense, Python, Tailwind CSS)
-
----
-
-## System Architecture
-
-```mermaid
-graph TD
-    User([Developer]) --> UI[React 18 + Tailwind v4 + Monaco Editor UI]
-    UI --> Stores[Zustand State Stores]
-    Stores --> IPC[Typed IPC Service Layer]
-    IPC --> Tauri[Tauri v2 IPC — Native Commands & Events]
-
-    subgraph RustCore [Core Engine — Rust Workspace]
-        Tauri --> XCore["x-core — Task Runner & Toolchain Resolver"]
-        XCore --> XSecurity["x-security — Path Validation & Sandboxing"]
-        XCore --> XFilesystem["x-filesystem — File I/O, Search & Watcher"]
-        XCore --> XProcess["x-process — Async Process Execution & Streams"]
-    end
-
-    XProcess --> OS[Host OS Processes — Node.js / Python / rustc / GCC / Cargo]
-    XFilesystem --> Disk[Host File System]
-```
-
-**State layer:** `DocumentStore`, `TaskStore`, `ToolchainStore`, `WorkspaceStore`, `TerminalStore` (Zustand)
-
----
-
-## Repository Structure
-
-```
-.
-├── apps/
-│   └── desktop/
-│       ├── frontend/          # React 18, TypeScript, Tailwind CSS v4, Monaco Editor UI
-│       └── src-tauri/         # Tauri v2 entry point & Rust IPC command handlers
-├── crates/
-│   ├── x-core/                # Task runner, problem matcher, toolchain engine
-│   ├── x-filesystem/          # File operations, recursive search, file watcher
-│   ├── x-process/             # Async process execution & stdout/stderr streaming
-│   └── x-security/            # Workspace trust policies & path validation sandbox
-├── .toolchain.json            # Project toolchain environment configuration
-├── .x-editor/                 # Workspace-specific task and editor settings
-└── Cargo.toml                 # Workspace Cargo manifest
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-| Requirement | Version |
-|---|---|
-| Operating System | Windows 10/11, macOS, or Linux |
-| Node.js | ≥ 18.0.0 |
-| Rust toolchain | `cargo` ≥ 1.75 |
-| C/C++ compiler | MinGW-w64 (Windows) or Clang |
-
-### Installation
+Then:
 
 ```bash
 git clone https://github.com/Iamshi-vissa/X-Editor.git
 cd X-Editor
 npm install
+npx @tauri-apps/cli dev
 ```
 
-### Running in Development Mode
-
-**Windows (PowerShell):**
+On Windows with MSYS2, put MinGW on your path first (PowerShell):
 
 ```powershell
 $env:PATH = "C:\msys64\mingw64\bin;" + $env:PATH
@@ -149,24 +74,33 @@ $env:WINDRES = "C:\msys64\mingw64\bin\windres.exe"
 npx @tauri-apps/cli dev
 ```
 
-**macOS / Linux:**
+## Running the tests
 
 ```bash
-npx @tauri-apps/cli dev
+cargo test -p x-core -p x-security -p x-process -p x-filesystem   # 21 tests
+cd apps/desktop/frontend && npx tsc --noEmit && npm run build
 ```
 
----
+## Project structure
 
-## Testing
-
-Run the unit test suite across all core Rust crates:
-
-```bash
-cargo test -p x-core -p x-security -p x-process -p x-filesystem
+```
+apps/desktop/frontend/    React interface
+apps/desktop/src-tauri/   Tauri app and the commands the interface calls
+crates/                   the four Rust libraries
+packages/                 shared TypeScript types and design tokens
+docs/assets/              screenshots
 ```
 
----
+## Status
+
+In progress. Editing, toolchains, the terminal, tasks, the Problems panel and search all work.
+
+Not finished yet:
+
+- **Source control:** the Git panel is a design mockup. It shows sample changes, and the commit
+  button doesn't run Git yet.
+- **Extensions:** the marketplace panel shows a fixed sample list and can't install anything.
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for full details.
+MIT. See [LICENSE](LICENSE).
