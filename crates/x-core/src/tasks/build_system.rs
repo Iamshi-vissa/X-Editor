@@ -1,5 +1,5 @@
-use std::path::Path;
 use crate::tasks::model::{Task, TaskType};
+use std::path::Path;
 
 pub trait BuildSystemAdapter: Send + Sync {
     fn identify(&self) -> &'static str;
@@ -23,8 +23,17 @@ impl BuildSystemAdapter for CppDirectAdapter {
             id: "build_cpp_direct".to_string(),
             name: "Build C++ Project".to_string(),
             task_type: TaskType::Build,
-            command: if cfg!(windows) { "g++.exe".to_string() } else { "g++".to_string() },
-            args: vec!["-g".to_string(), "src/main.cpp".to_string(), "-o".to_string(), "build/app".to_string()],
+            command: if cfg!(windows) {
+                "g++.exe".to_string()
+            } else {
+                "g++".to_string()
+            },
+            args: vec![
+                "-g".to_string(),
+                "src/main.cpp".to_string(),
+                "-o".to_string(),
+                "build/app".to_string(),
+            ],
             working_directory: None,
             environment: Default::default(),
             depends_on: vec![],
@@ -49,7 +58,11 @@ impl BuildSystemAdapter for RustCargoAdapter {
             id: "build_cargo".to_string(),
             name: "Cargo Build".to_string(),
             task_type: TaskType::Build,
-            command: if cfg!(windows) { "cargo.exe".to_string() } else { "cargo".to_string() },
+            command: if cfg!(windows) {
+                "cargo.exe".to_string()
+            } else {
+                "cargo".to_string()
+            },
             args: vec!["build".to_string()],
             working_directory: None,
             environment: Default::default(),
@@ -61,10 +74,8 @@ impl BuildSystemAdapter for RustCargoAdapter {
 }
 
 pub fn detect_build_systems(workspace_root: &Path) -> Vec<Task> {
-    let adapters: Vec<Box<dyn BuildSystemAdapter>> = vec![
-        Box::new(RustCargoAdapter),
-        Box::new(CppDirectAdapter),
-    ];
+    let adapters: Vec<Box<dyn BuildSystemAdapter>> =
+        vec![Box::new(RustCargoAdapter), Box::new(CppDirectAdapter)];
 
     let mut generated = Vec::new();
     for adapter in adapters {

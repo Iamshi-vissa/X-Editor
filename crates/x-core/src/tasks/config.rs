@@ -1,6 +1,6 @@
+use crate::tasks::model::{Task, TaskConfig, TaskType};
 use std::fs;
 use std::path::Path;
-use crate::tasks::model::{TaskConfig, Task, TaskType};
 
 pub fn load_tasks_config(workspace_root: &Path) -> TaskConfig {
     let config_path = workspace_root.join(".x-editor").join("tasks.json");
@@ -20,11 +20,21 @@ pub fn load_tasks_config(workspace_root: &Path) -> TaskConfig {
                 id: "build".to_string(),
                 name: "Build Project".to_string(),
                 task_type: TaskType::Build,
-                command: if cfg!(windows) { "cmd.exe".to_string() } else { "sh".to_string() },
-                args: if cfg!(windows) {
-                    vec!["/C".to_string(), "echo [Build] Finished building workspace".to_string()]
+                command: if cfg!(windows) {
+                    "cmd.exe".to_string()
                 } else {
-                    vec!["-c".to_string(), "echo [Build] Finished building workspace".to_string()]
+                    "sh".to_string()
+                },
+                args: if cfg!(windows) {
+                    vec![
+                        "/C".to_string(),
+                        "echo [Build] Finished building workspace".to_string(),
+                    ]
+                } else {
+                    vec![
+                        "-c".to_string(),
+                        "echo [Build] Finished building workspace".to_string(),
+                    ]
                 },
                 working_directory: None,
                 environment: Default::default(),
@@ -36,11 +46,21 @@ pub fn load_tasks_config(workspace_root: &Path) -> TaskConfig {
                 id: "run".to_string(),
                 name: "Run Project".to_string(),
                 task_type: TaskType::Run,
-                command: if cfg!(windows) { "cmd.exe".to_string() } else { "sh".to_string() },
-                args: if cfg!(windows) {
-                    vec!["/C".to_string(), "echo [Run] Running application...".to_string()]
+                command: if cfg!(windows) {
+                    "cmd.exe".to_string()
                 } else {
-                    vec!["-c".to_string(), "echo [Run] Running application...".to_string()]
+                    "sh".to_string()
+                },
+                args: if cfg!(windows) {
+                    vec![
+                        "/C".to_string(),
+                        "echo [Run] Running application...".to_string(),
+                    ]
+                } else {
+                    vec![
+                        "-c".to_string(),
+                        "echo [Run] Running application...".to_string(),
+                    ]
                 },
                 working_directory: None,
                 environment: Default::default(),
@@ -52,11 +72,21 @@ pub fn load_tasks_config(workspace_root: &Path) -> TaskConfig {
                 id: "clean".to_string(),
                 name: "Clean Workspace".to_string(),
                 task_type: TaskType::Clean,
-                command: if cfg!(windows) { "cmd.exe".to_string() } else { "sh".to_string() },
-                args: if cfg!(windows) {
-                    vec!["/C".to_string(), "echo [Clean] Workspace cleaned".to_string()]
+                command: if cfg!(windows) {
+                    "cmd.exe".to_string()
                 } else {
-                    vec!["-c".to_string(), "echo [Clean] Workspace cleaned".to_string()]
+                    "sh".to_string()
+                },
+                args: if cfg!(windows) {
+                    vec![
+                        "/C".to_string(),
+                        "echo [Clean] Workspace cleaned".to_string(),
+                    ]
+                } else {
+                    vec![
+                        "-c".to_string(),
+                        "echo [Clean] Workspace cleaned".to_string(),
+                    ]
                 },
                 working_directory: None,
                 environment: Default::default(),

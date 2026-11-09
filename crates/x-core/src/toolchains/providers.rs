@@ -1,6 +1,8 @@
+use crate::toolchains::manifest::{
+    ToolchainManifest, ToolchainScope, ToolchainStatus, VerificationState,
+};
 use std::collections::HashMap;
 use std::process::Command;
-use crate::toolchains::manifest::{ToolchainManifest, ToolchainScope, ToolchainStatus, VerificationState};
 
 pub trait ToolchainProvider: Send + Sync {
     fn identify(&self) -> &'static str;
@@ -15,29 +17,34 @@ impl ToolchainProvider for GccProvider {
     }
 
     fn list_available(&self) -> Vec<ToolchainManifest> {
-        vec![
-            ToolchainManifest {
-                id: "gcc-15-x86_64".to_string(),
-                name: "GCC 15 C/C++ Compiler".to_string(),
-                language: "cpp".to_string(),
-                version: "15.0".to_string(),
-                platform: std::env::consts::OS.to_string(),
-                architecture: std::env::consts::ARCH.to_string(),
-                distribution: "gcc".to_string(),
-                source_url: "https://gcc.gnu.org".to_string(),
-                download_url: "https://gcc.gnu.org/pub/gcc/releases/gcc-15.0.0.tar.gz".to_string(),
-                sha256_checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
-                signature: None,
-                license: "GPLv3".to_string(),
-                installation_path: None,
-                executable_paths: HashMap::from([("gcc".to_string(), "bin/gcc".to_string()), ("g++".to_string(), "bin/g++".to_string())]),
-                environment_variables: HashMap::from([("CC".to_string(), "gcc".to_string()), ("CXX".to_string(), "g++".to_string())]),
-                capabilities: vec!["c".to_string(), "cpp".to_string()],
-                scope: ToolchainScope::Global,
-                status: ToolchainStatus::Available,
-                verification_states: vec![],
-            }
-        ]
+        vec![ToolchainManifest {
+            id: "gcc-15-x86_64".to_string(),
+            name: "GCC 15 C/C++ Compiler".to_string(),
+            language: "cpp".to_string(),
+            version: "15.0".to_string(),
+            platform: std::env::consts::OS.to_string(),
+            architecture: std::env::consts::ARCH.to_string(),
+            distribution: "gcc".to_string(),
+            source_url: "https://gcc.gnu.org".to_string(),
+            download_url: "https://gcc.gnu.org/pub/gcc/releases/gcc-15.0.0.tar.gz".to_string(),
+            sha256_checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                .to_string(),
+            signature: None,
+            license: "GPLv3".to_string(),
+            installation_path: None,
+            executable_paths: HashMap::from([
+                ("gcc".to_string(), "bin/gcc".to_string()),
+                ("g++".to_string(), "bin/g++".to_string()),
+            ]),
+            environment_variables: HashMap::from([
+                ("CC".to_string(), "gcc".to_string()),
+                ("CXX".to_string(), "g++".to_string()),
+            ]),
+            capabilities: vec!["c".to_string(), "cpp".to_string()],
+            scope: ToolchainScope::Global,
+            status: ToolchainStatus::Available,
+            verification_states: vec![],
+        }]
     }
 
     fn detect_installed(&self) -> Vec<ToolchainManifest> {
@@ -48,7 +55,8 @@ impl ToolchainProvider for GccProvider {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let first_line = stdout.lines().next().unwrap_or("gcc (GCC) 14.0");
-                let version = extract_version_number(first_line).unwrap_or_else(|| "14.0.0".to_string());
+                let version =
+                    extract_version_number(first_line).unwrap_or_else(|| "14.0.0".to_string());
 
                 detected.push(ToolchainManifest {
                     id: format!("gcc-system-{}", version),
@@ -65,7 +73,10 @@ impl ToolchainProvider for GccProvider {
                     license: "GPLv3".to_string(),
                     installation_path: Some("system".to_string()),
                     executable_paths: HashMap::from([("gcc".to_string(), cmd_name.to_string())]),
-                    environment_variables: HashMap::from([("CC".to_string(), cmd_name.to_string())]),
+                    environment_variables: HashMap::from([(
+                        "CC".to_string(),
+                        cmd_name.to_string(),
+                    )]),
                     capabilities: vec!["c".to_string(), "cpp".to_string()],
                     scope: ToolchainScope::Global,
                     status: ToolchainStatus::Installed,
@@ -117,7 +128,8 @@ impl ToolchainProvider for ClangProvider {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let first_line = stdout.lines().next().unwrap_or("clang version 18.0");
-                let version = extract_version_number(first_line).unwrap_or_else(|| "18.0.0".to_string());
+                let version =
+                    extract_version_number(first_line).unwrap_or_else(|| "18.0.0".to_string());
 
                 detected.push(ToolchainManifest {
                     id: format!("clang-system-{}", version),
@@ -134,7 +146,10 @@ impl ToolchainProvider for ClangProvider {
                     license: "Apache-2.0".to_string(),
                     installation_path: Some("system".to_string()),
                     executable_paths: HashMap::from([("clang".to_string(), cmd_name.to_string())]),
-                    environment_variables: HashMap::from([("CC".to_string(), cmd_name.to_string())]),
+                    environment_variables: HashMap::from([(
+                        "CC".to_string(),
+                        cmd_name.to_string(),
+                    )]),
                     capabilities: vec!["c".to_string(), "cpp".to_string()],
                     scope: ToolchainScope::Global,
                     status: ToolchainStatus::Installed,
@@ -153,29 +168,31 @@ impl ToolchainProvider for RustProvider {
     }
 
     fn list_available(&self) -> Vec<ToolchainManifest> {
-        vec![
-            ToolchainManifest {
-                id: "rust-stable-x86_64".to_string(),
-                name: "Rust Stable Toolchain".to_string(),
-                language: "rust".to_string(),
-                version: "1.80.0".to_string(),
-                platform: std::env::consts::OS.to_string(),
-                architecture: std::env::consts::ARCH.to_string(),
-                distribution: "rustup".to_string(),
-                source_url: "https://www.rust-lang.org".to_string(),
-                download_url: "https://static.rust-lang.org/dist/rust-1.80.0-x86_64.tar.gz".to_string(),
-                sha256_checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
-                signature: None,
-                license: "MIT/Apache-2.0".to_string(),
-                installation_path: None,
-                executable_paths: HashMap::from([("rustc".to_string(), "bin/rustc".to_string()), ("cargo".to_string(), "bin/cargo".to_string())]),
-                environment_variables: HashMap::default(),
-                capabilities: vec!["rust".to_string()],
-                scope: ToolchainScope::Global,
-                status: ToolchainStatus::Available,
-                verification_states: vec![],
-            }
-        ]
+        vec![ToolchainManifest {
+            id: "rust-stable-x86_64".to_string(),
+            name: "Rust Stable Toolchain".to_string(),
+            language: "rust".to_string(),
+            version: "1.80.0".to_string(),
+            platform: std::env::consts::OS.to_string(),
+            architecture: std::env::consts::ARCH.to_string(),
+            distribution: "rustup".to_string(),
+            source_url: "https://www.rust-lang.org".to_string(),
+            download_url: "https://static.rust-lang.org/dist/rust-1.80.0-x86_64.tar.gz".to_string(),
+            sha256_checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                .to_string(),
+            signature: None,
+            license: "MIT/Apache-2.0".to_string(),
+            installation_path: None,
+            executable_paths: HashMap::from([
+                ("rustc".to_string(), "bin/rustc".to_string()),
+                ("cargo".to_string(), "bin/cargo".to_string()),
+            ]),
+            environment_variables: HashMap::default(),
+            capabilities: vec!["rust".to_string()],
+            scope: ToolchainScope::Global,
+            status: ToolchainStatus::Available,
+            verification_states: vec![],
+        }]
     }
 
     fn detect_installed(&self) -> Vec<ToolchainManifest> {
@@ -186,7 +203,8 @@ impl ToolchainProvider for RustProvider {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let first_line = stdout.lines().next().unwrap_or("rustc 1.80.0");
-                let version = extract_version_number(first_line).unwrap_or_else(|| "1.80.0".to_string());
+                let version =
+                    extract_version_number(first_line).unwrap_or_else(|| "1.80.0".to_string());
 
                 detected.push(ToolchainManifest {
                     id: format!("rust-system-{}", version),
@@ -222,29 +240,31 @@ impl ToolchainProvider for NodeProvider {
     }
 
     fn list_available(&self) -> Vec<ToolchainManifest> {
-        vec![
-            ToolchainManifest {
-                id: "node-22-x86_64".to_string(),
-                name: "Node.js v22 LTS".to_string(),
-                language: "javascript".to_string(),
-                version: "22.0.0".to_string(),
-                platform: std::env::consts::OS.to_string(),
-                architecture: std::env::consts::ARCH.to_string(),
-                distribution: "node".to_string(),
-                source_url: "https://nodejs.org".to_string(),
-                download_url: "https://nodejs.org/dist/v22.0.0/node-v22.0.0.tar.gz".to_string(),
-                sha256_checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
-                signature: None,
-                license: "MIT".to_string(),
-                installation_path: None,
-                executable_paths: HashMap::from([("node".to_string(), "bin/node".to_string()), ("npm".to_string(), "bin/npm".to_string())]),
-                environment_variables: HashMap::default(),
-                capabilities: vec!["javascript".to_string(), "typescript".to_string()],
-                scope: ToolchainScope::Global,
-                status: ToolchainStatus::Available,
-                verification_states: vec![],
-            }
-        ]
+        vec![ToolchainManifest {
+            id: "node-22-x86_64".to_string(),
+            name: "Node.js v22 LTS".to_string(),
+            language: "javascript".to_string(),
+            version: "22.0.0".to_string(),
+            platform: std::env::consts::OS.to_string(),
+            architecture: std::env::consts::ARCH.to_string(),
+            distribution: "node".to_string(),
+            source_url: "https://nodejs.org".to_string(),
+            download_url: "https://nodejs.org/dist/v22.0.0/node-v22.0.0.tar.gz".to_string(),
+            sha256_checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                .to_string(),
+            signature: None,
+            license: "MIT".to_string(),
+            installation_path: None,
+            executable_paths: HashMap::from([
+                ("node".to_string(), "bin/node".to_string()),
+                ("npm".to_string(), "bin/npm".to_string()),
+            ]),
+            environment_variables: HashMap::default(),
+            capabilities: vec!["javascript".to_string(), "typescript".to_string()],
+            scope: ToolchainScope::Global,
+            status: ToolchainStatus::Available,
+            verification_states: vec![],
+        }]
     }
 
     fn detect_installed(&self) -> Vec<ToolchainManifest> {
@@ -255,7 +275,8 @@ impl ToolchainProvider for NodeProvider {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let first_line = stdout.lines().next().unwrap_or("v20.0.0");
-                let version = extract_version_number(first_line).unwrap_or_else(|| "20.0.0".to_string());
+                let version =
+                    extract_version_number(first_line).unwrap_or_else(|| "20.0.0".to_string());
 
                 detected.push(ToolchainManifest {
                     id: format!("node-system-{}", version),

@@ -1,6 +1,6 @@
 use std::fs;
-use std::path::Path;
 use std::io;
+use std::path::Path;
 
 pub fn create_file(path: &Path, content: &str) -> io::Result<()> {
     if let Some(parent) = path.parent() {

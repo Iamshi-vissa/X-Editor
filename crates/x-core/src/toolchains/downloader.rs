@@ -1,8 +1,10 @@
-use std::fs;
-use serde::{Deserialize, Serialize};
-use crate::toolchains::manifest::{ToolchainManifest, ToolchainScope, ToolchainStatus, VerificationState};
-use crate::toolchains::registry::{get_toolchain_registry, resolve_app_data_toolchain_dir};
 use crate::errors::XCoreError;
+use crate::toolchains::manifest::{
+    ToolchainManifest, ToolchainScope, ToolchainStatus, VerificationState,
+};
+use crate::toolchains::registry::{get_toolchain_registry, resolve_app_data_toolchain_dir};
+use serde::{Deserialize, Serialize};
+use std::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolchainProgressPayload {
@@ -27,7 +29,10 @@ where
         toolchain_id: manifest.id.clone(),
         stage: "download".to_string(),
         progress_percent: 25,
-        message: format!("Downloading {} archive from {}...", manifest.name, manifest.source_url),
+        message: format!(
+            "Downloading {} archive from {}...",
+            manifest.name, manifest.source_url
+        ),
     });
 
     let temp_dir = std::env::temp_dir().join(format!("x_editor_dl_{}", manifest.id));
@@ -51,11 +56,17 @@ where
         .map(|b| format!("{:02x}", b))
         .collect::<String>();
 
-    if manifest.sha256_checksum != calculated_checksum && manifest.sha256_checksum != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+    if manifest.sha256_checksum != calculated_checksum
+        && manifest.sha256_checksum
+            != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    {
         // Quarantine & cleanup on checksum failure
         let quarantine_dir = std::env::temp_dir().join("x_editor_quarantine");
         let _ = fs::create_dir_all(&quarantine_dir);
-        let _ = fs::rename(&archive_file, quarantine_dir.join(format!("{}_corrupt.bin", manifest.id)));
+        let _ = fs::rename(
+            &archive_file,
+            quarantine_dir.join(format!("{}_corrupt.bin", manifest.id)),
+        );
         let _ = fs::remove_dir_all(&temp_dir);
 
         manifest.status = ToolchainStatus::VerificationFailed;
@@ -65,7 +76,9 @@ where
         });
     }
 
-    manifest.verification_states.push(VerificationState::ChecksumVerified);
+    manifest
+        .verification_states
+        .push(VerificationState::ChecksumVerified);
 
     on_progress(ToolchainProgressPayload {
         toolchain_id: manifest.id.clone(),
@@ -80,8 +93,13 @@ where
 
     // Create dummy executables for validation
     for exec_name in manifest.executable_paths.keys() {
-        let dummy_exec_name = if cfg!(windows) { format!("{}.exe", exec_name) } else { exec_name.clone() };
-        fs::write(bin_dir.join(&dummy_exec_name), b"dummy_binary").map_err(|e| XCoreError::Io(e.to_string()))?;
+        let dummy_exec_name = if cfg!(windows) {
+            format!("{}.exe", exec_name)
+        } else {
+            exec_name.clone()
+        };
+        fs::write(bin_dir.join(&dummy_exec_name), b"dummy_binary")
+            .map_err(|e| XCoreError::Io(e.to_string()))?;
     }
 
     on_progress(ToolchainProgressPayload {
@@ -105,7 +123,9 @@ where
 
     manifest.installation_path = Some(final_install_path.to_string_lossy().to_string());
     manifest.status = ToolchainStatus::Installed;
-    manifest.verification_states.push(VerificationState::InstallationValidated);
+    manifest
+        .verification_states
+        .push(VerificationState::InstallationValidated);
 
     {
         let reg_arc = get_toolchain_registry();

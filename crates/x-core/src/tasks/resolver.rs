@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use crate::tasks::model::Task;
 use crate::errors::XCoreError;
+use crate::tasks::model::Task;
+use std::collections::{HashMap, HashSet};
 
 pub fn resolve_task_dependencies(
     target_id: &str,
@@ -34,7 +34,9 @@ pub fn resolve_task_dependencies(
             visiting.insert(id);
             path.push(id);
 
-            let task = task_map.get(id).ok_or_else(|| XCoreError::TaskNotFound(id.to_string()))?;
+            let task = task_map
+                .get(id)
+                .ok_or_else(|| XCoreError::TaskNotFound(id.to_string()))?;
             for dep_id in &task.depends_on {
                 dfs(dep_id.as_str(), task_map, visited, visiting, path, order)?;
             }
@@ -48,7 +50,14 @@ pub fn resolve_task_dependencies(
         Ok(())
     }
 
-    dfs(target_id, &task_map, &mut visited, &mut visiting, &mut path, &mut order)?;
+    dfs(
+        target_id,
+        &task_map,
+        &mut visited,
+        &mut visiting,
+        &mut path,
+        &mut order,
+    )?;
 
     Ok(order.into_iter().cloned().collect())
 }

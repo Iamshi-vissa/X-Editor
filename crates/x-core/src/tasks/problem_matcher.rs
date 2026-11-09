@@ -90,7 +90,7 @@ fn parse_msvc(line: &str, source: &str) -> Option<Problem> {
             let close_paren_idx = open_paren + close_paren;
             let file = line[..open_paren].trim().to_string();
             let nums = &line[open_paren + 1..close_paren_idx];
-            
+
             let mut line_num = None;
             let mut col_num = None;
 

@@ -1,8 +1,8 @@
+use crate::paths::validate_path_in_workspace;
 use std::collections::HashSet;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
-use std::io;
-use crate::paths::validate_path_in_workspace;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum WorkspaceTrustState {
@@ -80,7 +80,10 @@ mod tests {
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
 
-        assert_eq!(get_workspace_trust(&temp_dir), WorkspaceTrustState::Untrusted);
+        assert_eq!(
+            get_workspace_trust(&temp_dir),
+            WorkspaceTrustState::Untrusted
+        );
 
         set_workspace_trust(&temp_dir, true);
         assert_eq!(get_workspace_trust(&temp_dir), WorkspaceTrustState::Trusted);

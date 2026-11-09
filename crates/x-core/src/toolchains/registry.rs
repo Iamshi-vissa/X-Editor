@@ -1,10 +1,12 @@
+use crate::errors::XCoreError;
+use crate::toolchains::manifest::{ToolchainManifest, ToolchainScope, ToolchainStatus};
+use crate::toolchains::providers::{
+    ClangProvider, GccProvider, NodeProvider, RustProvider, ToolchainProvider,
+};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
-use crate::toolchains::manifest::{ToolchainManifest, ToolchainScope, ToolchainStatus};
-use crate::toolchains::providers::{ToolchainProvider, GccProvider, ClangProvider, RustProvider, NodeProvider};
-use crate::errors::XCoreError;
 
 pub struct ToolchainRegistry {
     pub providers: Vec<Box<dyn ToolchainProvider>>,
@@ -47,7 +49,8 @@ impl ToolchainRegistry {
         for provider in &self.providers {
             let detected = provider.detect_installed();
             for manifest in detected {
-                self.installed_manifests.insert(manifest.id.clone(), manifest);
+                self.installed_manifests
+                    .insert(manifest.id.clone(), manifest);
             }
         }
     }
@@ -64,8 +67,12 @@ impl ToolchainRegistry {
         self.installed_manifests.values().cloned().collect()
     }
 
-    pub fn register_installed_toolchain(&mut self, manifest: ToolchainManifest) -> Result<(), XCoreError> {
-        self.installed_manifests.insert(manifest.id.clone(), manifest);
+    pub fn register_installed_toolchain(
+        &mut self,
+        manifest: ToolchainManifest,
+    ) -> Result<(), XCoreError> {
+        self.installed_manifests
+            .insert(manifest.id.clone(), manifest);
         Ok(())
     }
 

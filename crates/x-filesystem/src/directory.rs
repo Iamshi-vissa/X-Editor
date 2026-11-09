@@ -1,6 +1,6 @@
 use std::fs;
-use std::path::Path;
 use std::io;
+use std::path::Path;
 
 #[derive(Debug, serde::Serialize)]
 pub struct DirectoryEntry {
@@ -23,9 +23,7 @@ pub fn list_directory(path: &Path) -> io::Result<Vec<DirectoryEntry>> {
         }
     }
     // Sort directories first, then files
-    entries.sort_by(|a, b| {
-        b.is_dir.cmp(&a.is_dir).then_with(|| a.name.cmp(&b.name))
-    });
+    entries.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then_with(|| a.name.cmp(&b.name)));
     Ok(entries)
 }
 

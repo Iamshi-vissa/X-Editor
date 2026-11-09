@@ -1,6 +1,6 @@
 use std::fs;
-use std::path::Path;
 use std::io;
+use std::path::Path;
 
 pub fn read_file_content(path: &Path) -> io::Result<String> {
     fs::read_to_string(path)
