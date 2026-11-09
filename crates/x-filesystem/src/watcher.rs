@@ -28,7 +28,6 @@ impl WorkspaceWatcher {
             .map_err(|e| e.to_string())?;
 
         std::thread::spawn(move || {
-            // Watcher errors are dropped; only successful events are forwarded.
             for event in rx.into_iter().flatten() {
                 let kind_str = match event.kind {
                     EventKind::Create(_) => "create",
