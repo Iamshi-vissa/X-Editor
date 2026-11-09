@@ -1,10 +1,10 @@
-# <img src="docs/headers/h1-x-editor.svg" alt="X-EDITOR" height="60">
+# X-EDITOR
 
 A desktop code editor that also manages the languages and runtimes your projects need.
 
 ![X-Editor interface](docs/assets/x-editor-preview.png)
 
-## <img src="docs/headers/h2-about.svg" alt="ABOUT" height="38">
+## ABOUT
 
 Most editors leave runtimes to separate tools like `nvm`, `pyenv` and `rustup`. X-Editor puts them
 in the same place as your code. It reads what a project expects (for example the Node version in
@@ -14,7 +14,7 @@ can install or switch to the right version for you.
 It's built with Tauri, so the interface is a React app and the heavy work (files, processes,
 toolchains) runs in Rust on background threads, which keeps the editor responsive.
 
-## <img src="docs/headers/h2-features.svg" alt="FEATURES" height="38">
+## FEATURES
 
 - **Editing:** *Monaco* editor (the one in VS Code), tabs, split view, breadcrumbs, minimap and
   bracket colouring
@@ -29,7 +29,7 @@ toolchains) runs in Rust on background threads, which keeps the editor responsiv
 - **Workspace safety:** every file path is checked so the app can't read or write outside the open
   folder, and untrusted folders can't run tasks until you *trust* them
 
-## <img src="docs/headers/h2-how-it-works.svg" alt="HOW IT WORKS" height="38">
+## HOW IT WORKS
 
 The interface sends requests to the Rust side through Tauri's *IPC*. The Rust code is split into four
 small libraries:
@@ -41,7 +41,7 @@ small libraries:
 | `x-process` | Starting programs and streaming their output to the terminal |
 | `x-security` | Path checks and workspace trust |
 
-## <img src="docs/headers/h2-architecture.svg" alt="ARCHITECTURE" height="38">
+## ARCHITECTURE
 
 ```mermaid
 flowchart TB
@@ -57,7 +57,7 @@ flowchart TB
 
 The interface only asks; the Rust side does the work on background threads, and every file path goes through x-security first.
 
-## <img src="docs/headers/h2-tech-stack.svg" alt="TECH STACK" height="38">
+## TECH STACK
 
 <p align="center">
   <img src="https://img.shields.io/badge/Rust-000000?style=flat-square&logo=rust&logoColor=white" alt="Rust">
@@ -78,7 +78,7 @@ The interface only asks; the Rust side does the work on background threads, and 
 | Editor | Monaco Editor |
 | State | Zustand |
 
-## <img src="docs/headers/h2-getting-started.svg" alt="GETTING STARTED" height="38">
+## GETTING STARTED
 
 You need:
 
@@ -105,14 +105,14 @@ $env:WINDRES = "C:\msys64\mingw64\bin\windres.exe"
 npx @tauri-apps/cli dev
 ```
 
-## <img src="docs/headers/h2-running-the-tests.svg" alt="RUNNING THE TESTS" height="38">
+## RUNNING THE TESTS
 
 ```bash
 cargo test -p x-core -p x-security -p x-process -p x-filesystem   # 21 tests
 cd apps/desktop/frontend && npx tsc --noEmit && npm run build
 ```
 
-## <img src="docs/headers/h2-project-structure.svg" alt="PROJECT STRUCTURE" height="38">
+## PROJECT STRUCTURE
 
 ```
 apps/desktop/frontend/    React interface
@@ -122,7 +122,7 @@ packages/                 shared TypeScript types and design tokens
 docs/assets/              screenshots
 ```
 
-## <img src="docs/headers/h2-status.svg" alt="STATUS" height="38">
+## STATUS
 
 In progress. Editing, toolchains, the terminal, tasks, the *Problems panel* and search all work.
 
@@ -132,6 +132,6 @@ Not finished yet:
   button doesn't run Git yet.
 - **Extensions:** the marketplace panel shows a fixed sample list and can't install anything.
 
-## <img src="docs/headers/h2-license.svg" alt="LICENSE" height="38">
+## LICENSE
 
 MIT. See [LICENSE](LICENSE).
