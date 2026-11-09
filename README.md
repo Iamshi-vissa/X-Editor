@@ -1,147 +1,103 @@
 # X-Editor
 
-**A High-Performance, Local-First Desktop IDE with Integrated Toolchain Management**
+**A fast, local-first desktop code editor with built-in toolchain management.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Rust Core](https://img.shields.io/badge/Rust%20Core-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust core](https://img.shields.io/badge/Rust%20core-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript-61DAFB.svg)](https://react.dev/)
-[![Desktop Engine](https://img.shields.io/badge/Desktop%20Engine-Tauri%20v2-24C8D8.svg)](https://tauri.app/)
+[![Desktop](https://img.shields.io/badge/Desktop-Tauri%20v2-24C8D8.svg)](https://tauri.app/)
 
-![X-Editor Interface Preview](docs/assets/x-editor-preview.png)
+![X-Editor interface preview](docs/assets/x-editor-preview.png)
 
----
+## About
 
-## Overview
+X-Editor is a desktop code editor that also manages the compilers and runtimes your project
+needs. Most editors leave that to separate tools such as `rustup` or `nvm`. X-Editor detects the
+C/C++ compilers, Rust and Node.js installed on your machine, checks them against what the project
+asks for, and offers a one-click fix when they don't match.
 
-X-Editor is a local-first code editor engineered for execution speed, deep toolchain control, and zero-latency code navigation. It combines a React 18 / TypeScript / Tailwind CSS v4 / Monaco Editor frontend with a multi-crate Rust core, connected through Tauri v2 IPC, to deliver a workstation-class desktop IDE with native runtime management built in.
+The interface is built with React and the Monaco editor (the editor inside VS Code). Everything
+that touches your disk or runs programs is written in Rust, runs on background threads so the
+interface stays smooth, and only works inside the folder you opened.
 
-Conventional editors treat runtime management as an external concern, requiring developers to coordinate separate CLI tools (`nvm`, `pyenv`, `rustup`) alongside their editor. X-Editor removes that separation by unifying code editing and runtime lifecycle management within a single native application.
+## Features
 
-### Design Goals
+### Working today
 
-| Goal | Implementation |
+- **Editing:** Monaco editor with tabs, split view (`Ctrl+\`), breadcrumbs, minimap and
+  bracket-pair colours.
+- **Command palette and quick open:** `Ctrl+Shift+P` / `F1` for commands, `Ctrl+P` to jump to a file.
+- **Toolchain manager:** detects GCC/MinGW, Clang/LLVM, Rust (rustup) and Node.js; flags version
+  mismatches with your project; installs or switches versions and writes a `.toolchain.json` to
+  the workspace.
+- **Integrated terminal** (`` Ctrl+` ``): multiple terminal tabs with live output and input.
+- **Tasks and problems:** build, test and clean tasks are set up automatically for Cargo and C++
+  projects; compiler errors from GCC, `rustc` and `tsc` appear in the Problems panel, and clicking
+  one jumps to the line.
+- **Search:** search across all files in the workspace.
+- **Themes:** Purple Dark (default), Cyberpunk Midnight and Light Modern.
+- **Workspace sandbox:** every file operation is checked so it can't reach outside the open folder.
+
+### Not finished yet
+
+- **Source control panel:** the layout is built, but it shows sample data. Real Git status,
+  staging, commit and push are not connected yet.
+- **Extensions panel:** shows a sample list. Installing and running extensions is not implemented.
+- **More languages:** Python and Go are not detected by the toolchain manager yet.
+- **Shared packages:** `packages/shared-types` and `packages/ui-tokens` only contain a
+  `package.json` so far; the types and tokens still live inside the frontend.
+
+## Tech stack
+
+| Part | Tools |
 |---|---|
-| **Local-first security** | Sandboxed file access validation via the `x-security` crate, preventing unauthorized disk access |
-| **Non-blocking I/O** | Terminal streaming, file watching, and compiler processes run on background OS threads (`x-process`, `x-filesystem`), preserving a 60fps UI loop |
-| **Active environment resolution** | Continuous validation of project manifests (`package.json` engines, `.python-version`, `Cargo.toml`) against installed system runtimes, with one-click remediation |
+| Interface | React 18, TypeScript, Tailwind CSS v4, Monaco Editor, Zustand |
+| Desktop shell | Tauri v2 (typed IPC commands and events) |
+| Core engine | Rust workspace: `x-core`, `x-filesystem`, `x-process`, `x-security` (Tokio, notify) |
+| Tooling | Cargo, npm workspaces, Vite, oxlint, clippy, rustfmt |
 
----
-
-## Feature Guide
-
-### 1. Theming — Black & Violet Design System
-
-A custom design token schema (`themeTokens.ts`) drives the editor's visual language:
-
-| Element | Color | Value |
-|---|---|---|
-| Editor background | Deep obsidian | `#0e0e14` |
-| Sidebar / surface panels | Low-contrast dark violet | `#141019` |
-| Primary accent | Signature violet | `#8b5cf6` |
-| Keywords | | `#a855f7` |
-| Strings | | `#c4b5fd` |
-| Functions | | `#d8b4fe` |
-| Types / classes | | `#e9d5ff` |
-| Comments | | `#7a7590` |
-| Numbers | | `#c084fc` |
-| Variables | | `#e4e0f0` |
-
-Switch themes via the **Palette** icon in the Activity Bar, which opens the Color Theme Picker with **Purple Dark**, **Cyberpunk Midnight**, and **Light Modern** presets.
-
-### 2. Multi-Pane Editing & Navigation
-
-- **Split Editor View** (`Ctrl+\`) — dual side-by-side Monaco instances for simultaneous multi-file editing
-- **Tab management** — pinned tabs, dirty-state indicators (`•`), close-on-hover
-- **Breadcrumb navigation** — interactive file path hierarchy below the tab bar
-- **Minimap & bracket-pair colorization** — real-time structural visualization along the editor's right edge
-
-### 3. Command Palette & Quick Open
-
-- **Command Palette** (`Ctrl+Shift+P` / `F1`) — fuzzy search across IDE commands, build tasks, toolchain detections, and preferences
-- **Quick Open** (`Ctrl+P`) — instant file navigation by workspace path
-
-### 4. Toolchain Management Engine
-
-- **Runtime discovery** — automatic detection of installed compilers and runtimes (Node.js, Python, Rust via `cargo`/`rustc`, Go, GCC/MinGW)
-- **Version mismatch resolution** — flags discrepancies between project manifests and active toolchains
-- **One-click fix** — activates the required runtime version and writes a synchronized `.toolchain.json` to the workspace root
-- **Toolchain logs panel** — streams installation, compilation, and sync logs to the bottom drawer
-
-### 5. Integrated Terminal & Development Panels
-
-- **Multi-tab terminal** (`` Ctrl+` ``) — embedded PowerShell/CMD sessions with interactive stdin/stdout streaming
-- **Compiler problem matcher** — parses GCC, `rustc`, and `tsc` output into the Problems panel; clicking an entry jumps the editor to the exact line and column
-- **Source control (Git)** — branch status, staged/unstaged diffs, and inline commit/push
-- **Extensions marketplace** — manage development extensions (Rust Analyzer, C/C++ IntelliSense, Python, Tailwind CSS)
-
----
-
-## System Architecture
+## How it works
 
 ```mermaid
 graph TD
-    User([Developer]) --> UI[React 18 + Tailwind v4 + Monaco Editor UI]
-    UI --> Stores[Zustand State Stores]
-    Stores --> IPC[Typed IPC Service Layer]
-    IPC --> Tauri[Tauri v2 IPC — Native Commands & Events]
+    User([Developer]) --> UI[React + Tailwind + Monaco UI]
+    UI --> Stores[Zustand stores]
+    Stores --> IPC[Typed IPC service layer]
+    IPC --> Tauri[Tauri v2 commands and events]
 
-    subgraph RustCore [Core Engine — Rust Workspace]
-        Tauri --> XCore["x-core — Task Runner & Toolchain Resolver"]
-        XCore --> XSecurity["x-security — Path Validation & Sandboxing"]
-        XCore --> XFilesystem["x-filesystem — File I/O, Search & Watcher"]
-        XCore --> XProcess["x-process — Async Process Execution & Streams"]
+    subgraph RustCore [Rust core]
+        Tauri --> XCore["x-core: tasks, problem matcher, toolchains"]
+        XCore --> XSecurity["x-security: path checks and workspace trust"]
+        XCore --> XFilesystem["x-filesystem: file I/O, search, file watcher"]
+        XCore --> XProcess["x-process: running programs and streaming output"]
     end
 
-    XProcess --> OS[Host OS Processes — Node.js / Python / rustc / GCC / Cargo]
-    XFilesystem --> Disk[Host File System]
+    XProcess --> OS[Node.js / Python / rustc / GCC / Cargo]
+    XFilesystem --> Disk[Your files]
 ```
 
-**State layer:** `DocumentStore`, `TaskStore`, `ToolchainStore`, `WorkspaceStore`, `TerminalStore` (Zustand)
-
----
-
-## Repository Structure
-
-```
-.
-├── apps/
-│   └── desktop/
-│       ├── frontend/          # React 18, TypeScript, Tailwind CSS v4, Monaco Editor UI
-│       └── src-tauri/         # Tauri v2 entry point & Rust IPC command handlers
-├── crates/
-│   ├── x-core/                # Task runner, problem matcher, toolchain engine
-│   ├── x-filesystem/          # File operations, recursive search, file watcher
-│   ├── x-process/             # Async process execution & stdout/stderr streaming
-│   └── x-security/            # Workspace trust policies & path validation sandbox
-├── .toolchain.json            # Project toolchain environment configuration
-├── .x-editor/                 # Workspace-specific task and editor settings
-└── Cargo.toml                 # Workspace Cargo manifest
-```
-
----
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
 | Requirement | Version |
 |---|---|
-| Operating System | Windows 10/11, macOS, or Linux |
-| Node.js | ≥ 18.0.0 |
-| Rust toolchain | `cargo` ≥ 1.75 |
-| C/C++ compiler | MinGW-w64 (Windows) or Clang |
+| Operating system | Windows 10/11, macOS or Linux |
+| Node.js | 18 or newer |
+| Rust | 1.75 or newer (`rustup`) |
+| C/C++ compiler | MinGW-w64 on Windows, Xcode Command Line Tools on macOS, GCC/Clang on Linux |
+| Linux only | Tauri's system libraries (WebKitGTK and friends): see the [Tauri prerequisites](https://tauri.app/start/prerequisites/) |
 
-### Installation
+### Install and run
 
 ```bash
 git clone https://github.com/Iamshi-vissa/X-Editor.git
 cd X-Editor
 npm install
+npx @tauri-apps/cli dev
 ```
 
-### Running in Development Mode
-
-**Windows (PowerShell):**
+On Windows with MSYS2, put MinGW on the `PATH` first (the path to `windres.exe` is also set in
+`.cargo/config.toml`; change it if MSYS2 is installed somewhere else):
 
 ```powershell
 $env:PATH = "C:\msys64\mingw64\bin;" + $env:PATH
@@ -149,24 +105,46 @@ $env:WINDRES = "C:\msys64\mingw64\bin\windres.exe"
 npx @tauri-apps/cli dev
 ```
 
-**macOS / Linux:**
+### Build an installer
 
 ```bash
-npx @tauri-apps/cli dev
+npx @tauri-apps/cli build
 ```
 
----
-
-## Testing
-
-Run the unit test suite across all core Rust crates:
+## Running the tests
 
 ```bash
-cargo test -p x-core -p x-security -p x-process -p x-filesystem
+cargo test -p x-core -p x-security -p x-process -p x-filesystem   # Rust core (21 tests)
+cargo fmt --all --check && cargo clippy -p x-core -p x-security -p x-process -p x-filesystem
+
+cd apps/desktop/frontend
+npx tsc -b && npm run lint && npm run build                        # interface
 ```
 
----
+## Project structure
+
+```
+apps/desktop/frontend/   React interface (components, Zustand stores, IPC client)
+apps/desktop/src-tauri/  Tauri entry point and the IPC command handlers
+crates/x-core/           task runner, problem matcher, toolchain engine
+crates/x-filesystem/     file operations, search, file watcher
+crates/x-process/        running programs and streaming their output
+crates/x-security/       workspace trust and path validation
+packages/shared-types/   placeholder for shared TypeScript types (not filled in yet)
+packages/ui-tokens/      placeholder for design tokens (not filled in yet)
+docs/assets/             screenshots
+```
+
+## Status
+
+The editor, toolchain manager, terminal, tasks and problem matcher work. Next steps:
+
+- Connect the Source control panel to real Git.
+- Build the extension system behind the Extensions panel.
+- Add Python and Go to the toolchain manager.
+- Add tests for the frontend and the Tauri command layer (today only the Rust crates are tested).
+- Add CI to run the tests and linters on every push.
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for full details.
+No license has been added yet, so all rights are reserved by default.
