@@ -4,7 +4,7 @@ import { ipc } from "../services/ipc";
 
 export function detectLanguageFromPath(path: string): string {
     if (!path) return "javascript";
-    const filename = path.split(/[\/\\]/).pop() || "";
+    const filename = path.split(/[/\\]/).pop() || "";
     const ext = filename.includes(".") ? filename.split(".").pop()?.toLowerCase() || "" : filename.toLowerCase();
 
     switch (ext) {

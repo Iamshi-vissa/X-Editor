@@ -1,6 +1,6 @@
+use crate::toolchains::manifest::ToolchainManifest;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use crate::toolchains::manifest::ToolchainManifest;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedToolchainEnvironment {
@@ -39,7 +39,12 @@ impl ResolvedToolchainEnvironment {
                 .map(|p| p.to_string_lossy().to_string())
                 .collect();
 
-            let full_path = format!("{}{}{}", new_path_entries.join(path_sep), path_sep, host_path);
+            let full_path = format!(
+                "{}{}{}",
+                new_path_entries.join(path_sep),
+                path_sep,
+                host_path
+            );
             env_map.insert("PATH".to_string(), full_path);
         }
 

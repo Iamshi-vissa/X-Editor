@@ -1,17 +1,17 @@
+use crate::errors::XCoreError;
+use crate::tasks::config::load_tasks_config;
+use crate::tasks::model::{TaskExecution, TaskState, TaskType};
+use crate::tasks::problem_matcher::{parse_compiler_output, Problem};
+use crate::tasks::resolver::resolve_task_dependencies;
+use crate::tasks::variables::substitute_task_variables;
+use crate::toolchains::environment::ResolvedToolchainEnvironment;
+use crate::toolchains::resolver::resolve_active_project_toolchains;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
-use x_process::process_manager::{spawn_process_with_env, kill_process};
+use x_process::process_manager::{kill_process, spawn_process_with_env};
 use x_security::trust::validate_task_authorization;
-use crate::tasks::model::{TaskState, TaskExecution, TaskType};
-use crate::tasks::config::load_tasks_config;
-use crate::tasks::resolver::resolve_task_dependencies;
-use crate::tasks::problem_matcher::{parse_compiler_output, Problem};
-use crate::tasks::variables::substitute_task_variables;
-use crate::toolchains::resolver::resolve_active_project_toolchains;
-use crate::toolchains::environment::ResolvedToolchainEnvironment;
-use crate::errors::XCoreError;
 
 pub struct TaskRunnerState {
     pub active_executions: HashMap<String, TaskExecution>,
@@ -85,8 +85,12 @@ where
             .map_err(|e| XCoreError::SecurityError(e.to_string()))?;
 
         // Variable substitution for command & args
-        let tc_root = toolchains.first().and_then(|t| t.installation_path.as_deref()).map(Path::new);
-        let substituted_cmd = substitute_task_variables(&task.command, &workspace_root, None, tc_root);
+        let tc_root = toolchains
+            .first()
+            .and_then(|t| t.installation_path.as_deref())
+            .map(Path::new);
+        let substituted_cmd =
+            substitute_task_variables(&task.command, &workspace_root, None, tc_root);
         let substituted_args: Vec<String> = task
             .args
             .iter()
@@ -120,7 +124,9 @@ where
         {
             let state_arc = get_task_runner_state();
             let mut state = state_arc.lock().unwrap();
-            state.active_executions.insert(execution_id.clone(), execution.clone());
+            state
+                .active_executions
+                .insert(execution_id.clone(), execution.clone());
         }
 
         on_start_cb(execution.clone());
@@ -243,7 +249,9 @@ where
         .tasks
         .iter()
         .find(|t| t.task_type == task_type)
-        .ok_or_else(|| XCoreError::TaskNotFound(format!("No task found for type {:?}", task_type)))?;
+        .ok_or_else(|| {
+            XCoreError::TaskNotFound(format!("No task found for type {:?}", task_type))
+        })?;
 
     run_task_by_id(
         workspace_root,

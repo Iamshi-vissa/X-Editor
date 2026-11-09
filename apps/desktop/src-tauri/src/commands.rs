@@ -1,23 +1,34 @@
+use std::path::PathBuf;
+use tauri::Emitter;
 use x_core::errors::XCoreError;
-use x_core::workspace::{get_workspace, set_workspace};
 use x_core::settings::AppSettings;
 use x_core::tasks::config::load_tasks_config;
 use x_core::tasks::model::{Task, TaskExecution, TaskType};
-use x_core::tasks::runner::{run_task_by_id, run_task_by_type, cancel_task_execution, get_task_runner_state, clear_task_history};
-use x_core::toolchains::manifest::{ToolchainManifest, ToolchainScope, ProjectToolchainRequirement};
-use x_core::toolchains::registry::get_toolchain_registry;
-use x_core::toolchains::resolver::{load_project_toolchain_config, save_project_toolchain_config, resolve_active_project_toolchains};
+use x_core::tasks::runner::{
+    cancel_task_execution, clear_task_history, get_task_runner_state, run_task_by_id,
+    run_task_by_type,
+};
 use x_core::toolchains::downloader::download_and_install_toolchain;
 use x_core::toolchains::environment::ResolvedToolchainEnvironment;
+use x_core::toolchains::manifest::{
+    ProjectToolchainRequirement, ToolchainManifest, ToolchainScope,
+};
+use x_core::toolchains::registry::get_toolchain_registry;
+use x_core::toolchains::resolver::{
+    load_project_toolchain_config, resolve_active_project_toolchains, save_project_toolchain_config,
+};
+use x_core::workspace::{get_workspace, set_workspace};
 use x_filesystem::directory::{list_directory, DirectoryEntry};
 use x_filesystem::file::{read_file_content, write_file_content};
-use x_filesystem::operations::{create_file, create_directory, rename_path, delete_path};
+use x_filesystem::operations::{create_directory, create_file, delete_path, rename_path};
 use x_filesystem::search::{search_workspace, SearchResultMatch};
-use x_process::process_manager::{spawn_process, spawn_process_with_env, write_process_stdin, kill_process};
+use x_process::process_manager::{
+    kill_process, spawn_process, spawn_process_with_env, write_process_stdin,
+};
 use x_security::paths::validate_path_in_workspace;
-use x_security::trust::{get_workspace_trust, set_workspace_trust, validate_toolchain_authorization, WorkspaceTrustState};
-use std::path::PathBuf;
-use tauri::Emitter;
+use x_security::trust::{
+    get_workspace_trust, set_workspace_trust, validate_toolchain_authorization, WorkspaceTrustState,
+};
 
 #[tauri::command]
 pub fn workspace_select(path: String) -> Result<(), XCoreError> {
@@ -125,7 +136,10 @@ pub fn filesystem_delete(path: String) -> Result<(), XCoreError> {
 }
 
 #[tauri::command]
-pub fn filesystem_search(query: String, is_content: bool) -> Result<Vec<SearchResultMatch>, XCoreError> {
+pub fn filesystem_search(
+    query: String,
+    is_content: bool,
+) -> Result<Vec<SearchResultMatch>, XCoreError> {
     let workspace_root = get_workspace().ok_or(XCoreError::WorkspaceNotOpen)?;
     let results = search_workspace(&workspace_root, &query, is_content, 100);
     Ok(results)
@@ -140,9 +154,11 @@ pub async fn process_spawn(
     cwd: Option<String>,
 ) -> Result<String, String> {
     let workspace_root = get_workspace().ok_or_else(|| "Workspace not open".to_string())?;
-    let target_cwd = cwd.map(PathBuf::from).unwrap_or_else(|| workspace_root.clone());
-    let valid_cwd = validate_path_in_workspace(&workspace_root, &target_cwd)
-        .map_err(|e| e.to_string())?;
+    let target_cwd = cwd
+        .map(PathBuf::from)
+        .unwrap_or_else(|| workspace_root.clone());
+    let valid_cwd =
+        validate_path_in_workspace(&workspace_root, &target_cwd).map_err(|e| e.to_string())?;
 
     let app_out = app.clone();
     let app_err = app.clone();
@@ -176,9 +192,11 @@ pub async fn process_spawn_toolchain_terminal(
     cwd: Option<String>,
 ) -> Result<String, String> {
     let workspace_root = get_workspace().ok_or_else(|| "Workspace not open".to_string())?;
-    let target_cwd = cwd.map(PathBuf::from).unwrap_or_else(|| workspace_root.clone());
-    let valid_cwd = validate_path_in_workspace(&workspace_root, &target_cwd)
-        .map_err(|e| e.to_string())?;
+    let target_cwd = cwd
+        .map(PathBuf::from)
+        .unwrap_or_else(|| workspace_root.clone());
+    let valid_cwd =
+        validate_path_in_workspace(&workspace_root, &target_cwd).map_err(|e| e.to_string())?;
 
     let active_toolchains = resolve_active_project_toolchains(&workspace_root);
     let toolchain_env = ResolvedToolchainEnvironment::build(&active_toolchains);
@@ -209,7 +227,9 @@ pub async fn process_spawn_toolchain_terminal(
 
 #[tauri::command]
 pub async fn process_write_stdin(process_id: String, input: String) -> Result<(), String> {
-    write_process_stdin(&process_id, &input).await.map_err(|e| e.to_string())
+    write_process_stdin(&process_id, &input)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -260,10 +280,13 @@ pub async fn task_run(
             let _ = app_start.emit("task://started", start_exec);
         },
         move |exec_id, chunk_text| {
-            let _ = app_out.emit("task://output", serde_json::json!({
-                "execution_id": exec_id,
-                "data": chunk_text
-            }));
+            let _ = app_out.emit(
+                "task://output",
+                serde_json::json!({
+                    "execution_id": exec_id,
+                    "data": chunk_text
+                }),
+            );
         },
         move |problem| {
             let _ = app_prob.emit("task://problem", problem);
@@ -296,10 +319,13 @@ pub async fn task_build(
             let _ = app_start.emit("task://started", start_exec);
         },
         move |exec_id, chunk_text| {
-            let _ = app_out.emit("task://output", serde_json::json!({
-                "execution_id": exec_id,
-                "data": chunk_text
-            }));
+            let _ = app_out.emit(
+                "task://output",
+                serde_json::json!({
+                    "execution_id": exec_id,
+                    "data": chunk_text
+                }),
+            );
         },
         move |problem| {
             let _ = app_prob.emit("task://problem", problem);
@@ -332,10 +358,13 @@ pub async fn task_clean(
             let _ = app_start.emit("task://started", start_exec);
         },
         move |exec_id, chunk_text| {
-            let _ = app_out.emit("task://output", serde_json::json!({
-                "execution_id": exec_id,
-                "data": chunk_text
-            }));
+            let _ = app_out.emit(
+                "task://output",
+                serde_json::json!({
+                    "execution_id": exec_id,
+                    "data": chunk_text
+                }),
+            );
         },
         move |problem| {
             let _ = app_prob.emit("task://problem", problem);
@@ -368,10 +397,13 @@ pub async fn task_test(
             let _ = app_start.emit("task://started", start_exec);
         },
         move |exec_id, chunk_text| {
-            let _ = app_out.emit("task://output", serde_json::json!({
-                "execution_id": exec_id,
-                "data": chunk_text
-            }));
+            let _ = app_out.emit(
+                "task://output",
+                serde_json::json!({
+                    "execution_id": exec_id,
+                    "data": chunk_text
+                }),
+            );
         },
         move |problem| {
             let _ = app_prob.emit("task://problem", problem);
@@ -464,10 +496,11 @@ pub async fn toolchain_install(
     };
 
     let app_prog = app.clone();
-    let installed_manifest = download_and_install_toolchain(manifest, target_scope, move |progress| {
-        let _ = app_prog.emit("toolchain://progress", progress);
-    })
-    .await?;
+    let installed_manifest =
+        download_and_install_toolchain(manifest, target_scope, move |progress| {
+            let _ = app_prog.emit("toolchain://progress", progress);
+        })
+        .await?;
 
     let _ = app.emit("toolchain://completed", installed_manifest.clone());
     Ok(installed_manifest)
@@ -490,7 +523,9 @@ pub fn toolchain_set_project(
         .map_err(|e| XCoreError::SecurityError(e.to_string()))?;
 
     let mut config = load_project_toolchain_config(&workspace_root);
-    config.toolchains.retain(|t| !t.language.eq_ignore_ascii_case(&requirement.language));
+    config
+        .toolchains
+        .retain(|t| !t.language.eq_ignore_ascii_case(&requirement.language));
     config.toolchains.push(requirement);
 
     save_project_toolchain_config(&workspace_root, &config).map_err(XCoreError::Io)

@@ -1,11 +1,11 @@
+use crate::errors::ProcessError;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex, OnceLock};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::{Child, ChildStdin, Command};
-use serde::{Deserialize, Serialize};
-use crate::errors::ProcessError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessOutputChunk {
@@ -87,7 +87,9 @@ where
     #[cfg(windows)]
     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
 
-    let mut child = cmd.spawn().map_err(|e| ProcessError::StartFailed(e.to_string()))?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| ProcessError::StartFailed(e.to_string()))?;
 
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
@@ -190,7 +192,10 @@ pub async fn write_process_stdin(process_id: &str, input: &str) -> Result<(), Pr
     if let Some(stdin_mutex) = stdin_opt {
         let mut guard = stdin_mutex.lock().await;
         if let Some(stdin) = guard.as_mut() {
-            stdin.write_all(input.as_bytes()).await.map_err(ProcessError::Io)?;
+            stdin
+                .write_all(input.as_bytes())
+                .await
+                .map_err(ProcessError::Io)?;
             stdin.flush().await.map_err(ProcessError::Io)?;
             return Ok(());
         }
@@ -241,7 +246,10 @@ mod tests {
     #[tokio::test]
     async fn test_spawn_and_kill_process_tree() {
         #[cfg(windows)]
-        let (cmd, args) = ("cmd.exe".to_string(), vec!["/C".to_string(), "ping 127.0.0.1 -n 20".to_string()]);
+        let (cmd, args) = (
+            "cmd.exe".to_string(),
+            vec!["/C".to_string(), "ping 127.0.0.1 -n 20".to_string()],
+        );
         #[cfg(not(windows))]
         let (cmd, args) = ("sleep".to_string(), vec!["20".to_string()]);
 
@@ -253,7 +261,8 @@ mod tests {
             |_chunk| {},
             |_chunk| {},
             |_exit| {},
-        ).await;
+        )
+        .await;
 
         assert!(res.is_ok());
 

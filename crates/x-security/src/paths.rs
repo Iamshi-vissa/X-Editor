@@ -1,9 +1,12 @@
-use std::path::{Path, PathBuf};
 use std::io;
+use std::path::{Path, PathBuf};
 
-pub fn validate_path_in_workspace(workspace_root: &Path, target_path: &Path) -> io::Result<PathBuf> {
+pub fn validate_path_in_workspace(
+    workspace_root: &Path,
+    target_path: &Path,
+) -> io::Result<PathBuf> {
     let canonical_root = workspace_root.canonicalize()?;
-    
+
     let canonical_target = if target_path.exists() {
         target_path.canonicalize()?
     } else {
@@ -15,7 +18,10 @@ pub fn validate_path_in_workspace(workspace_root: &Path, target_path: &Path) -> 
     if canonical_target.starts_with(&canonical_root) {
         Ok(canonical_target)
     } else {
-        Err(io::Error::new(io::ErrorKind::PermissionDenied, "Path is outside the workspace"))
+        Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "Path is outside the workspace",
+        ))
     }
 }
 

@@ -1,8 +1,10 @@
+use crate::errors::XCoreError;
+use crate::toolchains::manifest::{
+    ProjectToolchainConfig, ProjectToolchainRequirement, ToolchainManifest,
+};
+use crate::toolchains::registry::get_toolchain_registry;
 use std::fs;
 use std::path::Path;
-use crate::toolchains::manifest::{ProjectToolchainConfig, ToolchainManifest, ProjectToolchainRequirement};
-use crate::toolchains::registry::get_toolchain_registry;
-use crate::errors::XCoreError;
 
 pub fn load_project_toolchain_config(workspace_root: &Path) -> ProjectToolchainConfig {
     let config_path = workspace_root.join(".x-editor").join("toolchains.json");
@@ -16,7 +18,10 @@ pub fn load_project_toolchain_config(workspace_root: &Path) -> ProjectToolchainC
     ProjectToolchainConfig::default()
 }
 
-pub fn save_project_toolchain_config(workspace_root: &Path, config: &ProjectToolchainConfig) -> Result<(), String> {
+pub fn save_project_toolchain_config(
+    workspace_root: &Path,
+    config: &ProjectToolchainConfig,
+) -> Result<(), String> {
     let dir = workspace_root.join(".x-editor");
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
