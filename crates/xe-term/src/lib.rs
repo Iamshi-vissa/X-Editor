@@ -36,14 +36,33 @@ pub struct ShellInfo {
 pub fn default_shell() -> ShellInfo {
     if cfg!(windows) {
         if let Ok(p) = which::which("pwsh.exe") {
-            return ShellInfo { program: p.to_string_lossy().into(), args: vec!["-NoLogo".into()], kind: "powershell".into() };
+            return ShellInfo {
+                program: p.to_string_lossy().into(),
+                args: vec!["-NoLogo".into()],
+                kind: "powershell".into(),
+            };
         }
-        return ShellInfo { program: "powershell.exe".into(), args: vec!["-NoLogo".into()], kind: "powershell".into() };
+        return ShellInfo {
+            program: "powershell.exe".into(),
+            args: vec!["-NoLogo".into()],
+            kind: "powershell".into(),
+        };
     }
-    let program = std::env::var("SHELL").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| {
-        if PathBuf::from("/bin/zsh").exists() && cfg!(target_os = "macos") { "/bin/zsh".into() } else { "/bin/bash".into() }
-    });
-    ShellInfo { program, args: vec!["-l".into()], kind: "posix".into() }
+    let program = std::env::var("SHELL")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| {
+            if PathBuf::from("/bin/zsh").exists() && cfg!(target_os = "macos") {
+                "/bin/zsh".into()
+            } else {
+                "/bin/bash".into()
+            }
+        });
+    ShellInfo {
+        program,
+        args: vec!["-l".into()],
+        kind: "posix".into(),
+    }
 }
 
 /// Classifies a shell program so the caller knows its command syntax.
@@ -93,7 +112,12 @@ impl TerminalManager {
     {
         let pty = native_pty_system();
         let pair = pty
-            .openpty(PtySize { rows: opts.rows.max(2), cols: opts.cols.max(2), pixel_width: 0, pixel_height: 0 })
+            .openpty(PtySize {
+                rows: opts.rows.max(2),
+                cols: opts.cols.max(2),
+                pixel_width: 0,
+                pixel_height: 0,
+            })
             .map_err(|e| TermError::Pty(e.to_string()))?;
 
         let mut cmd = CommandBuilder::new(&opts.program);
@@ -106,13 +130,29 @@ impl TerminalManager {
             cmd.env(k, v);
         }
 
-        let mut child = pair.slave.spawn_command(cmd).map_err(|e| TermError::Pty(e.to_string()))?;
+        let mut child = pair
+            .slave
+            .spawn_command(cmd)
+            .map_err(|e| TermError::Pty(e.to_string()))?;
         drop(pair.slave);
         let killer = child.clone_killer();
-        let mut reader = pair.master.try_clone_reader().map_err(|e| TermError::Pty(e.to_string()))?;
-        let writer = pair.master.take_writer().map_err(|e| TermError::Pty(e.to_string()))?;
+        let mut reader = pair
+            .master
+            .try_clone_reader()
+            .map_err(|e| TermError::Pty(e.to_string()))?;
+        let writer = pair
+            .master
+            .take_writer()
+            .map_err(|e| TermError::Pty(e.to_string()))?;
 
-        self.sessions.lock().insert(opts.id.clone(), Session { writer, master: pair.master, killer });
+        self.sessions.lock().insert(
+            opts.id.clone(),
+            Session {
+                writer,
+                master: pair.master,
+                killer,
+            },
+        );
 
         let sessions = self.sessions.clone();
         let id = opts.id.clone();
@@ -146,8 +186,12 @@ impl TerminalManager {
 
     pub fn write(&self, id: &str, data: &str) -> Result<(), TermError> {
         let mut map = self.sessions.lock();
-        let s = map.get_mut(id).ok_or_else(|| TermError::NotFound(id.into()))?;
-        s.writer.write_all(data.as_bytes()).map_err(|e| TermError::Pty(e.to_string()))?;
+        let s = map
+            .get_mut(id)
+            .ok_or_else(|| TermError::NotFound(id.into()))?;
+        s.writer
+            .write_all(data.as_bytes())
+            .map_err(|e| TermError::Pty(e.to_string()))?;
         s.writer.flush().map_err(|e| TermError::Pty(e.to_string()))
     }
 
@@ -155,7 +199,12 @@ impl TerminalManager {
         let map = self.sessions.lock();
         let s = map.get(id).ok_or_else(|| TermError::NotFound(id.into()))?;
         s.master
-            .resize(PtySize { rows: rows.max(2), cols: cols.max(2), pixel_width: 0, pixel_height: 0 })
+            .resize(PtySize {
+                rows: rows.max(2),
+                cols: cols.max(2),
+                pixel_width: 0,
+                pixel_height: 0,
+            })
             .map_err(|e| TermError::Pty(e.to_string()))
     }
 
@@ -231,8 +280,12 @@ mod tests {
                 rows: 24,
                 env: vec![],
             },
-            move |d| { let _ = tx.send(d); },
-            move |c| { let _ = etx.send(c); },
+            move |d| {
+                let _ = tx.send(d);
+            },
+            move |c| {
+                let _ = etx.send(c);
+            },
         )
         .unwrap();
         assert_eq!(erx.recv_timeout(Duration::from_secs(10)).unwrap(), Some(0));

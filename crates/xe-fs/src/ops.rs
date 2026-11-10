@@ -26,7 +26,11 @@ pub fn list_dir(path: &Path) -> Result<Vec<DirEntry>> {
         }
         let ft = entry.file_type()?;
         let is_symlink = ft.is_symlink();
-        let is_dir = if is_symlink { entry.path().is_dir() } else { ft.is_dir() };
+        let is_dir = if is_symlink {
+            entry.path().is_dir()
+        } else {
+            ft.is_dir()
+        };
         out.push(DirEntry {
             name,
             path: entry.path().to_string_lossy().to_string(),
@@ -54,7 +58,10 @@ pub struct FileContent {
 pub fn read_text(path: &Path) -> Result<FileContent> {
     let meta = fs::metadata(path)?;
     if meta.len() > MAX_OPEN_BYTES {
-        return Err(FsError::TooLarge(meta.len() / 1_048_576, MAX_OPEN_BYTES / 1_048_576));
+        return Err(FsError::TooLarge(
+            meta.len() / 1_048_576,
+            MAX_OPEN_BYTES / 1_048_576,
+        ));
     }
     let bytes = fs::read(path)?;
     let probe = &bytes[..bytes.len().min(8192)];
@@ -72,15 +79,24 @@ pub fn read_text(path: &Path) -> Result<FileContent> {
         Some(i) if i > 0 && text.as_bytes()[i - 1] == b'\r' => "\r\n",
         _ => "\n",
     };
-    Ok(FileContent { text, eol: eol.to_string(), size: meta.len() })
+    Ok(FileContent {
+        text,
+        eol: eol.to_string(),
+        size: meta.len(),
+    })
 }
 
 /// Writes through a temporary file in the same folder and renames it over the target,
 /// so a crash mid-save never leaves a half-written file behind.
 pub fn write_text_atomic(path: &Path, text: &str) -> Result<()> {
-    let dir = path.parent().ok_or_else(|| FsError::Other("file has no parent folder".into()))?;
+    let dir = path
+        .parent()
+        .ok_or_else(|| FsError::Other("file has no parent folder".into()))?;
     fs::create_dir_all(dir)?;
-    let file_name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
     let tmp = dir.join(format!(".{file_name}.xe-tmp"));
     {
         let mut f = fs::File::create(&tmp)?;
@@ -158,7 +174,11 @@ mod tests {
         fs::write(dir.path().join("b.txt"), "").unwrap();
         fs::create_dir(dir.path().join("z")).unwrap();
         fs::write(dir.path().join("A.txt"), "").unwrap();
-        let names: Vec<_> = list_dir(dir.path()).unwrap().into_iter().map(|e| e.name).collect();
+        let names: Vec<_> = list_dir(dir.path())
+            .unwrap()
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
         assert_eq!(names, vec!["z", "A.txt", "b.txt"]);
     }
 }

@@ -11,7 +11,11 @@ pub async fn auth_status(app: AppHandle) -> Result<Option<GithubUser>, String> {
     if let Some(u) = state.user.read().clone() {
         return Ok(Some(u));
     }
-    let Some(token) = tauri::async_runtime::spawn_blocking(xe_auth::load_token).await.ok().flatten() else {
+    let Some(token) = tauri::async_runtime::spawn_blocking(xe_auth::load_token)
+        .await
+        .ok()
+        .flatten()
+    else {
         return Ok(None);
     };
     match xe_auth::fetch_user(&token).await {
@@ -34,18 +38,29 @@ pub async fn auth_status(app: AppHandle) -> Result<Option<GithubUser>, String> {
 
 #[tauri::command]
 pub async fn auth_login_start(app: AppHandle) -> Result<DeviceCode, String> {
-    let client_id = app.state::<AppState>().github_client_id().ok_or_else(|| xe_auth::AuthError::NoClientId.to_string())?;
-    xe_auth::start_device_flow(&client_id).await.map_err(|e| e.to_string())
+    let client_id = app
+        .state::<AppState>()
+        .github_client_id()
+        .ok_or_else(|| xe_auth::AuthError::NoClientId.to_string())?;
+    xe_auth::start_device_flow(&client_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn auth_login_wait(app: AppHandle, code: DeviceCode) -> Result<GithubUser, String> {
     let state = app.state::<AppState>();
-    let client_id = state.github_client_id().ok_or_else(|| xe_auth::AuthError::NoClientId.to_string())?;
+    let client_id = state
+        .github_client_id()
+        .ok_or_else(|| xe_auth::AuthError::NoClientId.to_string())?;
     let cancel = Arc::new(AtomicBool::new(false));
     *state.auth_cancel.lock() = Some(cancel.clone());
-    let token = xe_auth::wait_for_token(&client_id, &code, cancel).await.map_err(|e| e.to_string())?;
-    let user = xe_auth::fetch_user(&token).await.map_err(|e| e.to_string())?;
+    let token = xe_auth::wait_for_token(&client_id, &code, cancel)
+        .await
+        .map_err(|e| e.to_string())?;
+    let user = xe_auth::fetch_user(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if let Err(e) = xe_auth::save_token(&token) {
         log::warn!("{e}; you'll need to sign in again next time");
     }
@@ -70,6 +85,11 @@ pub fn auth_logout(state: State<'_, AppState>) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn github_repos(app: AppHandle) -> Result<Vec<GithubRepo>, String> {
-    let token = app.state::<AppState>().token.read().clone().ok_or("sign in with GitHub first")?;
+    let token = app
+        .state::<AppState>()
+        .token
+        .read()
+        .clone()
+        .ok_or("sign in with GitHub first")?;
     xe_auth::list_repos(&token).await.map_err(|e| e.to_string())
 }

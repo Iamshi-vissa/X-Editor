@@ -26,25 +26,41 @@ pub async fn runtime_report(app: AppHandle) -> Result<RuntimeReport, String> {
     let root = app.state::<AppState>().workspace.read().clone();
     blocking(move || {
         let installed = xe_runtime::detect::detect_installed();
-        let reqs = root.map(|r| xe_runtime::detect::project_requirements(&r)).unwrap_or_default();
+        let reqs = root
+            .map(|r| xe_runtime::detect::project_requirements(&r))
+            .unwrap_or_default();
         let requirements = reqs
             .into_iter()
             .map(|r| {
-                let inst = installed.iter().find(|i| i.id == r.runtime).and_then(|i| i.version.clone());
+                let inst = installed
+                    .iter()
+                    .find(|i| i.id == r.runtime)
+                    .and_then(|i| i.version.clone());
                 let satisfied = match &inst {
                     Some(v) => xe_runtime::detect::satisfies(v, &r.requested),
                     None => Some(false),
                 };
-                RequirementStatus { requirement: r, installed_version: inst, satisfied }
+                RequirementStatus {
+                    requirement: r,
+                    installed_version: inst,
+                    satisfied,
+                }
             })
             .collect();
-        Ok(RuntimeReport { installed, requirements })
+        Ok(RuntimeReport {
+            installed,
+            requirements,
+        })
     })
     .await
 }
 
 #[tauri::command]
-pub fn run_plan_file(app: AppHandle, path: String, shell_kind: String) -> Result<Option<RunPlan>, String> {
+pub fn run_plan_file(
+    app: AppHandle,
+    path: String,
+    shell_kind: String,
+) -> Result<Option<RunPlan>, String> {
     let state = app.state::<AppState>();
     let p = state.guard(&path)?;
     let out_dir = std::env::temp_dir().join("x-editor-run");

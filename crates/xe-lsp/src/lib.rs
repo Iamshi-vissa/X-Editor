@@ -70,9 +70,14 @@ impl LspManager {
         L: Fn(String) + Send + 'static,
         E: FnOnce() + Send + 'static,
     {
-        let program = which::which(command).map_err(|_| LspError::NotInstalled(command.to_string()))?;
+        let program =
+            which::which(command).map_err(|_| LspError::NotInstalled(command.to_string()))?;
         let mut cmd = Command::new(program);
-        cmd.args(args).current_dir(cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        cmd.args(args)
+            .current_dir(cwd)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
@@ -109,8 +114,15 @@ impl LspManager {
 
     pub fn send(&self, id: &str, message: &str) -> Result<(), LspError> {
         let mut map = self.servers.lock();
-        let s = map.get_mut(id).ok_or_else(|| LspError::NotRunning(id.into()))?;
-        write!(s.stdin, "Content-Length: {}\r\n\r\n{}", message.len(), message)?;
+        let s = map
+            .get_mut(id)
+            .ok_or_else(|| LspError::NotRunning(id.into()))?;
+        write!(
+            s.stdin,
+            "Content-Length: {}\r\n\r\n{}",
+            message.len(),
+            message
+        )?;
         s.stdin.flush()?;
         Ok(())
     }

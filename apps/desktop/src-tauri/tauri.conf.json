@@ -44,7 +44,8 @@
     "targets": "all",
     "category": "DeveloperTool",
     "shortDescription": "A fast, customisable code editor that grows into an IDE",
-    "copyright": "Copyright (c) X-Editor contributors",
+    "copyright": "Copyright (c) 2026 Vamshi Bharath",
+    "publisher": "Vamshi Bharath",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

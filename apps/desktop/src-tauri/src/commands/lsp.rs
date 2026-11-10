@@ -53,5 +53,11 @@ pub fn lsp_stop(state: State<'_, AppState>, id: String) {
 
 #[tauri::command]
 pub fn lsp_available(commands: Vec<String>) -> Vec<xe_lsp::ServerAvailability> {
-    commands.into_iter().map(|c| xe_lsp::ServerAvailability { installed: xe_lsp::is_installed(&c), command: c }).collect()
+    commands
+        .into_iter()
+        .map(|c| xe_lsp::ServerAvailability {
+            installed: xe_lsp::is_installed(&c),
+            command: c,
+        })
+        .collect()
 }

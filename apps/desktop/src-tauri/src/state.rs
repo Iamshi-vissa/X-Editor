@@ -37,7 +37,10 @@ impl AppState {
     }
 
     pub fn workspace(&self) -> Result<PathBuf, String> {
-        self.workspace.read().clone().ok_or_else(|| "no folder is open".to_string())
+        self.workspace
+            .read()
+            .clone()
+            .ok_or_else(|| "no folder is open".to_string())
     }
 
     /// Resolves a path the UI sent and checks it's inside the workspace, the config folder,
@@ -51,7 +54,8 @@ impl AppState {
         match xe_fs::guard::resolve_within(&roots, &target) {
             Ok(p) => Ok(p),
             Err(e) => {
-                let resolved = xe_fs::guard::canonicalize_lenient(&target).map_err(|e| e.to_string())?;
+                let resolved =
+                    xe_fs::guard::canonicalize_lenient(&target).map_err(|e| e.to_string())?;
                 if self.picked_files.read().contains(&resolved) {
                     Ok(resolved)
                 } else {
@@ -64,7 +68,11 @@ impl AppState {
     pub fn recent(&self) -> Vec<String> {
         self.config.read_state()["recent"]
             .as_array()
-            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -92,7 +100,11 @@ impl AppState {
         self.config
             .read_settings()
             .ok()
-            .and_then(|s| s.pointer("/github/clientId").and_then(|v| v.as_str()).map(String::from))
+            .and_then(|s| {
+                s.pointer("/github/clientId")
+                    .and_then(|v| v.as_str())
+                    .map(String::from)
+            })
             .filter(|s| !s.trim().is_empty())
     }
 }

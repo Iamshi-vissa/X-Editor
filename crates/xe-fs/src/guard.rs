@@ -30,10 +30,18 @@ pub fn canonicalize_lenient(target: &Path) -> Result<PathBuf> {
         }
         match existing.file_name() {
             Some(name) => rest.push(name.to_os_string()),
-            None => return Err(FsError::Other(format!("invalid path: {}", target.display()))),
+            None => {
+                return Err(FsError::Other(format!(
+                    "invalid path: {}",
+                    target.display()
+                )))
+            }
         }
         if !existing.pop() {
-            return Err(FsError::Other(format!("invalid path: {}", target.display())));
+            return Err(FsError::Other(format!(
+                "invalid path: {}",
+                target.display()
+            )));
         }
     }
     let mut out = existing.canonicalize()?;
@@ -56,8 +64,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().to_path_buf();
         std::fs::write(root.join("a.txt"), "x").unwrap();
-        assert!(resolve_within(&[root.clone()], &root.join("a.txt")).is_ok());
-        assert!(resolve_within(&[root.clone()], &root.join("new/dir/b.txt")).is_ok());
+        assert!(resolve_within(std::slice::from_ref(&root), &root.join("a.txt")).is_ok());
+        assert!(resolve_within(std::slice::from_ref(&root), &root.join("new/dir/b.txt")).is_ok());
     }
 
     #[test]
@@ -66,8 +74,14 @@ mod tests {
         let root = dir.path().join("ws");
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(dir.path().join("secret.txt"), "x").unwrap();
-        assert!(resolve_within(&[root.clone()], &root.join("../secret.txt")).is_err());
-        assert!(resolve_within(&[root.clone()], &root.join("missing/../../secret.txt")).is_err());
-        assert!(resolve_within(&[root.clone()], &dir.path().join("secret.txt")).is_err());
+        assert!(resolve_within(std::slice::from_ref(&root), &root.join("../secret.txt")).is_err());
+        assert!(resolve_within(
+            std::slice::from_ref(&root),
+            &root.join("missing/../../secret.txt")
+        )
+        .is_err());
+        assert!(
+            resolve_within(std::slice::from_ref(&root), &dir.path().join("secret.txt")).is_err()
+        );
     }
 }

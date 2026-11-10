@@ -2,8 +2,8 @@
 //! clone / fetch / push authenticated with the signed-in GitHub token.
 
 use git2::{
-    build::RepoBuilder, BranchType, Cred, FetchOptions, IndexAddOption, PushOptions, RemoteCallbacks, Repository,
-    Signature, Status, StatusOptions,
+    build::RepoBuilder, BranchType, Cred, FetchOptions, IndexAddOption, PushOptions,
+    RemoteCallbacks, Repository, Signature, Status, StatusOptions,
 };
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -49,14 +49,18 @@ fn open(root: &Path) -> Result<Repository> {
 }
 
 fn workdir(repo: &Repository) -> Result<PathBuf> {
-    repo.workdir().map(|p| p.to_path_buf()).ok_or_else(|| GitError::Other("bare repositories aren't supported".into()))
+    repo.workdir()
+        .map(|p| p.to_path_buf())
+        .ok_or_else(|| GitError::Other("bare repositories aren't supported".into()))
 }
 
 fn rel_path(repo: &Repository, path: &Path) -> Result<String> {
     let wd = workdir(repo)?;
     let wd = wd.canonicalize().unwrap_or(wd);
     let abs = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let rel = abs.strip_prefix(&wd).map_err(|_| GitError::Other("file is not inside the repository".into()))?;
+    let rel = abs
+        .strip_prefix(&wd)
+        .map_err(|_| GitError::Other("file is not inside the repository".into()))?;
     Ok(rel.to_string_lossy().replace('\\', "/"))
 }
 
@@ -64,18 +68,31 @@ pub fn status(root: &Path) -> Result<RepoStatus> {
     let repo = match open(root) {
         Ok(r) => r,
         Err(_) => {
-            return Ok(RepoStatus { is_repo: false, branch: None, upstream: None, ahead: 0, behind: 0, files: vec![] })
+            return Ok(RepoStatus {
+                is_repo: false,
+                branch: None,
+                upstream: None,
+                ahead: 0,
+                behind: 0,
+                files: vec![],
+            })
         }
     };
     let mut opts = StatusOptions::new();
-    opts.include_untracked(true).recurse_untracked_dirs(true).renames_head_to_index(true);
+    opts.include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .renames_head_to_index(true);
     let statuses = repo.statuses(Some(&mut opts))?;
     let mut files = Vec::new();
     for entry in statuses.iter() {
         let s = entry.status();
         let Some(path) = entry.path() else { continue };
         if s.is_conflicted() {
-            files.push(FileStatus { path: path.into(), status: "conflicted".into(), staged: false });
+            files.push(FileStatus {
+                path: path.into(),
+                status: "conflicted".into(),
+                staged: false,
+            });
             continue;
         }
         let index = [
@@ -87,7 +104,11 @@ pub fn status(root: &Path) -> Result<RepoStatus> {
         ];
         for (flag, name) in index {
             if s.contains(flag) {
-                files.push(FileStatus { path: path.into(), status: name.into(), staged: true });
+                files.push(FileStatus {
+                    path: path.into(),
+                    status: name.into(),
+                    staged: true,
+                });
                 break;
             }
         }
@@ -100,7 +121,11 @@ pub fn status(root: &Path) -> Result<RepoStatus> {
         ];
         for (flag, name) in wt {
             if s.contains(flag) {
-                files.push(FileStatus { path: path.into(), status: name.into(), staged: false });
+                files.push(FileStatus {
+                    path: path.into(),
+                    status: name.into(),
+                    staged: false,
+                });
                 break;
             }
         }
@@ -131,11 +156,20 @@ pub fn status(root: &Path) -> Result<RepoStatus> {
         Err(_) => {
             // Unborn branch (fresh `git init`): read the name HEAD points at.
             if let Ok(r) = repo.find_reference("HEAD") {
-                branch = r.symbolic_target().map(|t| t.trim_start_matches("refs/heads/").to_string());
+                branch = r
+                    .symbolic_target()
+                    .map(|t| t.trim_start_matches("refs/heads/").to_string());
             }
         }
     }
-    Ok(RepoStatus { is_repo: true, branch, upstream, ahead, behind, files })
+    Ok(RepoStatus {
+        is_repo: true,
+        branch,
+        upstream,
+        ahead,
+        behind,
+        files,
+    })
 }
 
 pub fn init(root: &Path) -> Result<()> {
@@ -195,7 +229,12 @@ pub fn discard(root: &Path, paths: &[String]) -> Result<()> {
     Ok(())
 }
 
-pub fn commit(root: &Path, message: &str, fallback_name: Option<&str>, fallback_email: Option<&str>) -> Result<String> {
+pub fn commit(
+    root: &Path,
+    message: &str,
+    fallback_name: Option<&str>,
+    fallback_email: Option<&str>,
+) -> Result<String> {
     if message.trim().is_empty() {
         return Err(GitError::Other("commit message is empty".into()));
     }
@@ -214,7 +253,12 @@ pub fn commit(root: &Path, message: &str, fallback_name: Option<&str>, fallback_
     let mut index = repo.index()?;
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
-    let parents: Vec<git2::Commit> = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).into_iter().collect();
+    let parents: Vec<git2::Commit> = repo
+        .head()
+        .ok()
+        .and_then(|h| h.peel_to_commit().ok())
+        .into_iter()
+        .collect();
     if let Some(parent) = parents.first() {
         if parent.tree_id() == tree_id {
             return Err(GitError::Other("nothing staged to commit".into()));
@@ -242,7 +286,11 @@ pub fn branches(root: &Path) -> Result<Vec<BranchInfo>> {
             if name.ends_with("/HEAD") {
                 continue;
             }
-            out.push(BranchInfo { name: name.into(), is_head: b.is_head(), is_remote: kind == BranchType::Remote });
+            out.push(BranchInfo {
+                name: name.into(),
+                is_head: b.is_head(),
+                is_remote: kind == BranchType::Remote,
+            });
         }
     }
     out.sort_by(|a, b| a.is_remote.cmp(&b.is_remote).then(a.name.cmp(&b.name)));
@@ -259,7 +307,10 @@ pub fn checkout(root: &Path, name: &str, create: bool) -> Result<()> {
     } else if repo.find_branch(name, BranchType::Local).is_ok() {
         name.to_string()
     } else if let Ok(remote) = repo.find_branch(name, BranchType::Remote) {
-        let local = name.split_once('/').map(|(_, n)| n.to_string()).unwrap_or_else(|| name.to_string());
+        let local = name
+            .split_once('/')
+            .map(|(_, n)| n.to_string())
+            .unwrap_or_else(|| name.to_string());
         let commit = remote.get().peel_to_commit()?;
         let mut b = repo.branch(&local, &commit, false)?;
         b.set_upstream(Some(name))?;
@@ -276,11 +327,17 @@ pub fn checkout(root: &Path, name: &str, create: bool) -> Result<()> {
 
 /// Returns the file's content at HEAD, or None if it's new / not in a repository.
 pub fn head_text(root: &Path, file: &Path) -> Result<Option<String>> {
-    let Ok(repo) = open(root) else { return Ok(None) };
+    let Ok(repo) = open(root) else {
+        return Ok(None);
+    };
     let rel = rel_path(&repo, file)?;
-    let Ok(head) = repo.head() else { return Ok(None) };
+    let Ok(head) = repo.head() else {
+        return Ok(None);
+    };
     let tree = head.peel_to_tree()?;
-    let Ok(entry) = tree.get_path(Path::new(&rel)) else { return Ok(None) };
+    let Ok(entry) = tree.get_path(Path::new(&rel)) else {
+        return Ok(None);
+    };
     let blob = repo.find_blob(entry.id())?;
     if blob.is_binary() {
         return Ok(None);
@@ -306,15 +363,27 @@ pub fn line_changes(base: &str, current: &str) -> Vec<LineChange> {
     let mut out = Vec::new();
     for op in diff.ops() {
         match *op {
-            DiffOp::Insert { new_index, new_len, .. } => {
-                out.push(LineChange { kind: "added".into(), from: new_index + 1, to: new_index + new_len })
-            }
-            DiffOp::Replace { new_index, new_len, .. } => {
-                out.push(LineChange { kind: "modified".into(), from: new_index + 1, to: new_index + new_len })
-            }
+            DiffOp::Insert {
+                new_index, new_len, ..
+            } => out.push(LineChange {
+                kind: "added".into(),
+                from: new_index + 1,
+                to: new_index + new_len,
+            }),
+            DiffOp::Replace {
+                new_index, new_len, ..
+            } => out.push(LineChange {
+                kind: "modified".into(),
+                from: new_index + 1,
+                to: new_index + new_len,
+            }),
             DiffOp::Delete { new_index, .. } => {
                 let line = new_index.max(1);
-                out.push(LineChange { kind: "deleted".into(), from: line, to: line })
+                out.push(LineChange {
+                    kind: "deleted".into(),
+                    from: line,
+                    to: line,
+                })
             }
             DiffOp::Equal { .. } => {}
         }
@@ -322,7 +391,10 @@ pub fn line_changes(base: &str, current: &str) -> Vec<LineChange> {
     out
 }
 
-fn callbacks<'a>(token: Option<&'a str>, progress: Option<&'a dyn Fn(usize, usize)>) -> RemoteCallbacks<'a> {
+fn callbacks<'a>(
+    token: Option<&'a str>,
+    progress: Option<&'a dyn Fn(usize, usize)>,
+) -> RemoteCallbacks<'a> {
     let mut cb = RemoteCallbacks::new();
     cb.credentials(move |_url, username, allowed| {
         if let Some(t) = token {
@@ -344,7 +416,12 @@ fn callbacks<'a>(token: Option<&'a str>, progress: Option<&'a dyn Fn(usize, usiz
     cb
 }
 
-pub fn clone(url: &str, dest: &Path, token: Option<&str>, progress: &dyn Fn(usize, usize)) -> Result<()> {
+pub fn clone(
+    url: &str,
+    dest: &Path,
+    token: Option<&str>,
+    progress: &dyn Fn(usize, usize),
+) -> Result<()> {
     let mut fo = FetchOptions::new();
     fo.remote_callbacks(callbacks(token, Some(progress)));
     RepoBuilder::new().fetch_options(fo).clone(url, dest)?;
@@ -366,7 +443,12 @@ fn default_remote(repo: &Repository) -> Result<String> {
     if remotes.iter().flatten().any(|r| r == "origin") {
         return Ok("origin".into());
     }
-    remotes.iter().flatten().next().map(String::from).ok_or_else(|| GitError::Other("this repository has no remote".into()))
+    remotes
+        .iter()
+        .flatten()
+        .next()
+        .map(String::from)
+        .ok_or_else(|| GitError::Other("this repository has no remote".into()))
 }
 
 /// Fetches and fast-forwards the current branch. Refuses to merge diverged history, so
@@ -375,10 +457,18 @@ pub fn pull(root: &Path, token: Option<&str>) -> Result<String> {
     fetch(root, token)?;
     let repo = open(root)?;
     let head = repo.head()?;
-    let name = head.shorthand().ok_or_else(|| GitError::Other("not on a branch".into()))?.to_string();
+    let name = head
+        .shorthand()
+        .ok_or_else(|| GitError::Other("not on a branch".into()))?
+        .to_string();
     let local = repo.find_branch(&name, BranchType::Local)?;
-    let upstream = local.upstream().map_err(|_| GitError::Other(format!("{name} has no upstream branch")))?;
-    let target = upstream.get().target().ok_or_else(|| GitError::Other("upstream has no commits".into()))?;
+    let upstream = local
+        .upstream()
+        .map_err(|_| GitError::Other(format!("{name} has no upstream branch")))?;
+    let target = upstream
+        .get()
+        .target()
+        .ok_or_else(|| GitError::Other("upstream has no commits".into()))?;
     let annotated = repo.find_annotated_commit(target)?;
     let (analysis, _) = repo.merge_analysis(&[&annotated])?;
     if analysis.is_up_to_date() {
@@ -392,13 +482,18 @@ pub fn pull(root: &Path, token: Option<&str>) -> Result<String> {
         repo.checkout_head(Some(git2::build::CheckoutBuilder::new().safe()))?;
         return Ok("Fast-forwarded".into());
     }
-    Err(GitError::Other("Your branch and the remote have diverged. Merge or rebase in the terminal.".into()))
+    Err(GitError::Other(
+        "Your branch and the remote have diverged. Merge or rebase in the terminal.".into(),
+    ))
 }
 
 pub fn push(root: &Path, token: Option<&str>) -> Result<()> {
     let repo = open(root)?;
     let head = repo.head()?;
-    let name = head.shorthand().ok_or_else(|| GitError::Other("not on a branch".into()))?.to_string();
+    let name = head
+        .shorthand()
+        .ok_or_else(|| GitError::Other("not on a branch".into()))?
+        .to_string();
     let remote_name = default_remote(&repo)?;
     let mut remote = repo.find_remote(&remote_name)?;
     let rejected = std::cell::RefCell::new(None::<String>);
@@ -415,7 +510,9 @@ pub fn push(root: &Path, token: Option<&str>) -> Result<()> {
     remote.push(&[&spec], Some(&mut po))?;
     drop(po);
     if let Some(msg) = rejected.into_inner() {
-        return Err(GitError::Other(format!("push rejected ({msg}). Pull first.")));
+        return Err(GitError::Other(format!(
+            "push rejected ({msg}). Pull first."
+        )));
     }
     let mut local = repo.find_branch(&name, BranchType::Local)?;
     if local.upstream().is_err() {
@@ -445,21 +542,48 @@ mod tests {
         std::fs::write(root.join("b.txt"), "new").unwrap();
         let s = status(&root).unwrap();
         assert!(s.is_repo);
-        assert!(s.files.iter().any(|f| f.path == "a.txt" && f.status == "modified" && !f.staged));
-        assert!(s.files.iter().any(|f| f.path == "b.txt" && f.status == "untracked"));
+        assert!(s
+            .files
+            .iter()
+            .any(|f| f.path == "a.txt" && f.status == "modified" && !f.staged));
+        assert!(s
+            .files
+            .iter()
+            .any(|f| f.path == "b.txt" && f.status == "untracked"));
         stage_all(&root).unwrap();
         let s = status(&root).unwrap();
         assert!(s.files.iter().all(|f| f.staged));
         unstage(&root, &["b.txt".into()]).unwrap();
-        assert!(status(&root).unwrap().files.iter().any(|f| f.path == "b.txt" && !f.staged));
+        assert!(status(&root)
+            .unwrap()
+            .files
+            .iter()
+            .any(|f| f.path == "b.txt" && !f.staged));
         commit(&root, "second", Some("Test"), Some("t@example.com")).unwrap();
-        assert_eq!(head_text(&root, &root.join("a.txt")).unwrap().as_deref(), Some("one\n2\nthree\n"));
+        assert_eq!(
+            head_text(&root, &root.join("a.txt")).unwrap().as_deref(),
+            Some("one\n2\nthree\n")
+        );
     }
 
     #[test]
     fn gutter_changes() {
         let c = line_changes("a\nb\nc\n", "a\nB\nc\nd\n");
-        assert_eq!(c[0], LineChange { kind: "modified".into(), from: 2, to: 2 });
-        assert_eq!(c[1], LineChange { kind: "added".into(), from: 4, to: 4 });
+        assert_eq!(
+            c[0],
+            LineChange {
+                kind: "modified".into(),
+                from: 2,
+                to: 2
+            }
+        );
+        assert_eq!(
+            c[1],
+            LineChange {
+                kind: "added".into(),
+                from: 4,
+                to: 4
+            }
+        );
     }
 }

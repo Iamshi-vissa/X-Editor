@@ -9,16 +9,25 @@ export const [repo, setRepo] = createSignal<RepoStatus | null>(null);
 export const [gitBusy, setGitBusy] = createSignal<string | null>(null);
 
 let timer: number | undefined;
+let firstRequest = 0;
+const MAX_WAIT = 1000;
+
+/** Debounced status refresh that can't be starved: a burst of file events delays it by
+ *  at most MAX_WAIT ms. */
 export function refreshGit(delay = 0) {
+  const now = Date.now();
+  if (timer === undefined) firstRequest = now;
   clearTimeout(timer);
+  const wait = Math.max(0, Math.min(delay, firstRequest + MAX_WAIT - now));
   timer = window.setTimeout(async () => {
+    timer = undefined;
     if (!workspace()) return setRepo(null);
     try {
       setRepo(await ipc.git.status());
     } catch {
       setRepo(null);
     }
-  }, delay);
+  }, wait);
 }
 
 onFsChange((paths) => {

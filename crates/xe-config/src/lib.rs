@@ -61,7 +61,9 @@ impl ConfigStore {
 
     /// Every valid theme file in the themes folder; invalid ones are skipped.
     pub fn read_themes(&self) -> Vec<Value> {
-        let Ok(entries) = fs::read_dir(self.themes_dir()) else { return vec![] };
+        let Ok(entries) = fs::read_dir(self.themes_dir()) else {
+            return vec![];
+        };
         let mut out = Vec::new();
         for e in entries.flatten() {
             if e.path().extension().is_some_and(|x| x == "json") {
@@ -112,8 +114,14 @@ fn strip_line_comments(text: &str) -> String {
 fn read_json(path: &Path) -> Result<Value, String> {
     match fs::read_to_string(path) {
         Ok(t) if t.trim().is_empty() => Ok(Value::Object(Default::default())),
-        Ok(t) => serde_json::from_str(&strip_line_comments(&t))
-            .map_err(|e| format!("{} has an error on line {}: {}", path.display(), e.line(), e)),
+        Ok(t) => serde_json::from_str(&strip_line_comments(&t)).map_err(|e| {
+            format!(
+                "{} has an error on line {}: {}",
+                path.display(),
+                e.line(),
+                e
+            )
+        }),
         Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Value::Object(Default::default())),
         Err(e) => Err(e.to_string()),
     }
@@ -134,11 +142,20 @@ mod tests {
         let d = tempfile::tempdir().unwrap();
         let store = ConfigStore::at(d.path().to_path_buf());
         assert_eq!(store.read_settings().unwrap(), serde_json::json!({}));
-        fs::write(store.settings_path(), "{\n // my font\n \"font\": \"a//b\" // trailing\n}").unwrap();
-        assert_eq!(store.read_settings().unwrap(), serde_json::json!({"font": "a//b"}));
+        fs::write(
+            store.settings_path(),
+            "{\n // my font\n \"font\": \"a//b\" // trailing\n}",
+        )
+        .unwrap();
+        assert_eq!(
+            store.read_settings().unwrap(),
+            serde_json::json!({"font": "a//b"})
+        );
         fs::write(store.settings_path(), "{ broken").unwrap();
         assert!(store.read_settings().is_err());
-        store.write_state(&serde_json::json!({"recent": ["/a"]})).unwrap();
+        store
+            .write_state(&serde_json::json!({"recent": ["/a"]}))
+            .unwrap();
         assert_eq!(store.read_state()["recent"][0], "/a");
     }
 }

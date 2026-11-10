@@ -65,17 +65,27 @@ pub async fn fs_search(app: AppHandle, options: SearchOptions) -> Result<Vec<Sea
 /// Native "Open File" dialog. Picked files are allowed even outside the workspace.
 #[tauri::command]
 pub async fn fs_pick_file(app: AppHandle) -> Result<Option<String>, String> {
-    let picked = app.dialog().file().set_title("Open File").blocking_pick_file();
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("Open File")
+        .blocking_pick_file();
     Ok(picked.and_then(|p| p.into_path().ok()).and_then(|p| {
         let p = p.canonicalize().ok()?;
-        app.state::<AppState>().picked_files.write().insert(p.clone());
+        app.state::<AppState>()
+            .picked_files
+            .write()
+            .insert(p.clone());
         Some(p.to_string_lossy().to_string())
     }))
 }
 
 /// Native "Save As" dialog for untitled files.
 #[tauri::command]
-pub async fn fs_pick_save_path(app: AppHandle, suggested_name: Option<String>) -> Result<Option<String>, String> {
+pub async fn fs_pick_save_path(
+    app: AppHandle,
+    suggested_name: Option<String>,
+) -> Result<Option<String>, String> {
     let state = app.state::<AppState>();
     let mut dialog = app.dialog().file().set_title("Save As");
     if let Ok(ws) = state.workspace() {

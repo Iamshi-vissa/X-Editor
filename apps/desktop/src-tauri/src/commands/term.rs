@@ -23,14 +23,22 @@ pub struct TermSpawnArgs {
 }
 
 #[tauri::command]
-pub fn term_spawn(state: State<'_, AppState>, args: TermSpawnArgs, on_event: Channel<TermEvent>) -> Result<String, String> {
+pub fn term_spawn(
+    state: State<'_, AppState>,
+    args: TermSpawnArgs,
+    on_event: Channel<TermEvent>,
+) -> Result<String, String> {
     let cwd = match args.cwd {
         Some(c) => state.guard(&c)?,
         None => state
             .workspace
             .read()
             .clone()
-            .or_else(|| std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from))
+            .or_else(|| {
+                std::env::var_os("HOME")
+                    .or_else(|| std::env::var_os("USERPROFILE"))
+                    .map(PathBuf::from)
+            })
             .unwrap_or_else(std::env::temp_dir),
     };
     let default = xe_term::default_shell();
@@ -43,7 +51,15 @@ pub fn term_spawn(state: State<'_, AppState>, args: TermSpawnArgs, on_event: Cha
     state
         .terms
         .spawn(
-            xe_term::SpawnOptions { id: args.id, program, args: shell_args, cwd, cols: args.cols, rows: args.rows, env: vec![] },
+            xe_term::SpawnOptions {
+                id: args.id,
+                program,
+                args: shell_args,
+                cwd,
+                cols: args.cols,
+                rows: args.rows,
+                env: vec![],
+            },
             move |data| {
                 let _ = data_ch.send(TermEvent::Data { data });
             },
@@ -61,8 +77,16 @@ pub fn term_write(state: State<'_, AppState>, id: String, data: String) -> Resul
 }
 
 #[tauri::command]
-pub fn term_resize(state: State<'_, AppState>, id: String, cols: u16, rows: u16) -> Result<(), String> {
-    state.terms.resize(&id, cols, rows).map_err(|e| e.to_string())
+pub fn term_resize(
+    state: State<'_, AppState>,
+    id: String,
+    cols: u16,
+    rows: u16,
+) -> Result<(), String> {
+    state
+        .terms
+        .resize(&id, cols, rows)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

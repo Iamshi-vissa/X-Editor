@@ -33,7 +33,10 @@ pub fn settings_read(state: State<'_, AppState>) -> Result<Value, String> {
 
 #[tauri::command]
 pub fn settings_write(state: State<'_, AppState>, value: Value) -> Result<(), String> {
-    state.config.write_settings(&value).map_err(|e| e.to_string())
+    state
+        .config
+        .write_settings(&value)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

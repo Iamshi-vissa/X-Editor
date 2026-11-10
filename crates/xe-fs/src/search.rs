@@ -10,7 +10,12 @@ use std::sync::Arc;
 /// Lists every file in the workspace, respecting .gitignore, relative to `root`.
 pub fn list_files(root: &Path, limit: usize) -> Vec<String> {
     let mut out = Vec::new();
-    for entry in WalkBuilder::new(root).hidden(false).filter_entry(|e| e.file_name() != ".git").build().flatten() {
+    for entry in WalkBuilder::new(root)
+        .hidden(false)
+        .filter_entry(|e| e.file_name() != ".git")
+        .build()
+        .flatten()
+    {
         if entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
             if let Ok(rel) = entry.path().strip_prefix(root) {
                 out.push(rel.to_string_lossy().replace('\\', "/"));
@@ -57,7 +62,11 @@ pub fn search(root: &Path, opts: &SearchOptions) -> Result<Vec<SearchMatch>> {
     if opts.query.is_empty() {
         return Ok(vec![]);
     }
-    let mut pattern = if opts.regex { opts.query.clone() } else { regex::escape(&opts.query) };
+    let mut pattern = if opts.regex {
+        opts.query.clone()
+    } else {
+        regex::escape(&opts.query)
+    };
     if opts.whole_word {
         pattern = format!(r"\b(?:{pattern})\b");
     }
@@ -83,14 +92,22 @@ pub fn search(root: &Path, opts: &SearchOptions) -> Result<Vec<SearchMatch>> {
                 if count.load(Ordering::Relaxed) >= limit {
                     return WalkState::Quit;
                 }
-                let Ok(entry) = entry else { return WalkState::Continue };
+                let Ok(entry) = entry else {
+                    return WalkState::Continue;
+                };
                 if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
                     return WalkState::Continue;
                 }
-                if entry.metadata().map(|m| m.len() > 8 * 1024 * 1024).unwrap_or(true) {
+                if entry
+                    .metadata()
+                    .map(|m| m.len() > 8 * 1024 * 1024)
+                    .unwrap_or(true)
+                {
                     return WalkState::Continue;
                 }
-                let Ok(bytes) = std::fs::read(entry.path()) else { return WalkState::Continue };
+                let Ok(bytes) = std::fs::read(entry.path()) else {
+                    return WalkState::Continue;
+                };
                 if bytes[..bytes.len().min(8192)].contains(&0) {
                     return WalkState::Continue;
                 }
@@ -123,8 +140,15 @@ pub fn search(root: &Path, opts: &SearchOptions) -> Result<Vec<SearchMatch>> {
             })
         });
 
-    let mut out = Arc::try_unwrap(results).map(|m| m.into_inner()).unwrap_or_default();
-    out.sort_by(|a, b| a.path.cmp(&b.path).then(a.line.cmp(&b.line)).then(a.column.cmp(&b.column)));
+    let mut out = Arc::try_unwrap(results)
+        .map(|m| m.into_inner())
+        .unwrap_or_default();
+    out.sort_by(|a, b| {
+        a.path
+            .cmp(&b.path)
+            .then(a.line.cmp(&b.line))
+            .then(a.column.cmp(&b.column))
+    });
     out.truncate(limit);
     Ok(out)
 }
@@ -141,7 +165,13 @@ mod tests {
         std::fs::write(root.join(".gitignore"), "ignored.txt\n").unwrap();
         std::fs::write(root.join("a.rs"), "fn main() {\n  let Hello = 1;\n}\n").unwrap();
         std::fs::write(root.join("ignored.txt"), "hello").unwrap();
-        let opts = SearchOptions { query: "hello".into(), regex: false, case_sensitive: false, whole_word: false, limit: 100 };
+        let opts = SearchOptions {
+            query: "hello".into(),
+            regex: false,
+            case_sensitive: false,
+            whole_word: false,
+            limit: 100,
+        };
         let r = search(root, &opts).unwrap();
         assert_eq!(r.len(), 1);
         assert_eq!(r[0].path, "a.rs");

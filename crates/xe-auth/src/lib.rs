@@ -65,14 +65,21 @@ pub async fn start_device_flow(client_id: &str) -> Result<DeviceCode> {
         .await?;
     let value: serde_json::Value = resp.json().await?;
     if let Some(err) = value.get("error").and_then(|e| e.as_str()) {
-        let desc = value.get("error_description").and_then(|d| d.as_str()).unwrap_or(err);
+        let desc = value
+            .get("error_description")
+            .and_then(|d| d.as_str())
+            .unwrap_or(err);
         return Err(AuthError::Denied(desc.to_string()));
     }
     serde_json::from_value(value).map_err(|e| AuthError::Denied(e.to_string()))
 }
 
 /// Polls GitHub until the user approves the code, it expires, or `cancel` is set.
-pub async fn wait_for_token(client_id: &str, code: &DeviceCode, cancel: Arc<AtomicBool>) -> Result<String> {
+pub async fn wait_for_token(
+    client_id: &str,
+    code: &DeviceCode,
+    cancel: Arc<AtomicBool>,
+) -> Result<String> {
     let mut interval = code.interval.max(5);
     let deadline = std::time::Instant::now() + Duration::from_secs(code.expires_in);
     let http = client();
@@ -105,9 +112,14 @@ pub async fn wait_for_token(client_id: &str, code: &DeviceCode, cancel: Arc<Atom
             Some("authorization_pending") => {}
             Some("slow_down") => interval += 5,
             Some("expired_token") => return Err(AuthError::Expired),
-            Some("access_denied") => return Err(AuthError::Denied("you declined the request".into())),
+            Some("access_denied") => {
+                return Err(AuthError::Denied("you declined the request".into()))
+            }
             Some(other) => {
-                let desc = value.get("error_description").and_then(|d| d.as_str()).unwrap_or(other);
+                let desc = value
+                    .get("error_description")
+                    .and_then(|d| d.as_str())
+                    .unwrap_or(other);
                 return Err(AuthError::Denied(desc.to_string()));
             }
             None => return Err(AuthError::Denied("unexpected response from GitHub".into())),
@@ -141,7 +153,10 @@ pub async fn fetch_user(token: &str) -> Result<GithubUser> {
         .await?;
     if user.email.is_none() {
         // Private emails aren't on /user; fall back to GitHub's noreply address for commits.
-        user.email = Some(format!("{}+{}@users.noreply.github.com", user.id, user.login));
+        user.email = Some(format!(
+            "{}+{}@users.noreply.github.com",
+            user.id, user.login
+        ));
     }
     Ok(user)
 }
@@ -173,11 +188,14 @@ pub async fn list_repos(token: &str) -> Result<Vec<GithubRepo>> {
 }
 
 fn entry() -> Result<keyring::Entry> {
-    keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).map_err(|e| AuthError::Keyring(e.to_string()))
+    keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
+        .map_err(|e| AuthError::Keyring(e.to_string()))
 }
 
 pub fn save_token(token: &str) -> Result<()> {
-    entry()?.set_password(token).map_err(|e| AuthError::Keyring(e.to_string()))
+    entry()?
+        .set_password(token)
+        .map_err(|e| AuthError::Keyring(e.to_string()))
 }
 
 pub fn load_token() -> Option<String> {
