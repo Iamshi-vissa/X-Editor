@@ -1,0 +1,12 @@
+[package]
+name = "xe-term"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+parking_lot.workspace = true
+portable-pty = "0.9"
+which = "7"

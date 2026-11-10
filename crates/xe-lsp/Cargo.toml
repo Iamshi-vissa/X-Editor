@@ -1,0 +1,11 @@
+[package]
+name = "xe-lsp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+parking_lot.workspace = true
+which = "7"
