@@ -252,8 +252,6 @@ fn take_utf8(buf: &mut Vec<u8>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::mpsc;
-    use std::time::Duration;
 
     #[test]
     fn utf8_split_across_reads_is_preserved() {
@@ -267,6 +265,9 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn runs_a_shell_command_in_a_pty() {
+        use std::sync::mpsc;
+        use std::time::Duration;
+
         let mgr = TerminalManager::new();
         let (tx, rx) = mpsc::channel::<String>();
         let (etx, erx) = mpsc::channel::<Option<u32>>();
