@@ -37,8 +37,16 @@ fn version_re() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"(\d+)\.(\d+)(?:\.(\d+))?").unwrap())
 }
 
+/// Finds the version number in a `--version` banner. Lines that mention "version" or
+/// the tool name win over others, so notices like "Picked up JAVA_TOOL_OPTIONS:
+/// -Dhttp.proxyHost=127.0.0.1" aren't mistaken for the version.
 pub fn extract_version(text: &str) -> Option<String> {
-    version_re().find(text).map(|m| m.as_str().to_string())
+    let preferred = text
+        .lines()
+        .filter(|l| !l.starts_with("Picked up") && !l.contains("proxy"))
+        .find(|l| l.to_lowercase().contains("version") && version_re().is_match(l));
+    let line = preferred.or_else(|| text.lines().filter(|l| !l.starts_with("Picked up")).find(|l| version_re().is_match(l)))?;
+    version_re().find(line).map(|m| m.as_str().to_string())
 }
 
 /// Checks every known runtime in parallel (each `--version` runs on its own thread).
@@ -247,5 +255,7 @@ mod tests {
     fn extracts_versions() {
         assert_eq!(extract_version("rustc 1.97.0 (2d8144b78 2026-07-07)").as_deref(), Some("1.97.0"));
         assert_eq!(extract_version("go version go1.22.3 linux/amd64").as_deref(), Some("1.22.3"));
+        let java = "Picked up JAVA_TOOL_OPTIONS: -Dhttp.proxyHost=127.0.0.1\nopenjdk version \"21.0.4\" 2024-07-16\n";
+        assert_eq!(extract_version(java).as_deref(), Some("21.0.4"));
     }
 }
