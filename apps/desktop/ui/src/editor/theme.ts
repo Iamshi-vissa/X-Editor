@@ -1,0 +1,121 @@
+// The CodeMirror look, driven entirely by CSS variables set from the active theme.
+import { EditorView } from "@codemirror/view";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
+
+const v = (name: string) => `var(--${name})`;
+
+export const editorTheme = (dark: boolean) =>
+  EditorView.theme(
+    {
+      "&": {
+        color: v("text"),
+        backgroundColor: v("bg-editor"),
+        height: "100%",
+        fontSize: "var(--editor-font-size)",
+      },
+      ".cm-scroller": {
+        fontFamily: "var(--editor-font)",
+        lineHeight: "var(--editor-line-height)",
+        fontVariantLigatures: "var(--editor-ligatures)",
+        fontFeatureSettings: "var(--editor-features)",
+        overscrollBehavior: "contain",
+      },
+      ".cm-content": { caretColor: v("accent"), padding: "10px 0 40vh" },
+      "&.cm-focused .cm-cursor": { borderLeftColor: v("accent"), borderLeftWidth: "2px" },
+      ".cm-cursor": { borderLeftColor: v("accent"), borderLeftWidth: "2px" },
+      "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, ::selection": {
+        backgroundColor: `${v("selection")} !important`,
+      },
+      ".cm-activeLine": { backgroundColor: v("line-active") },
+      ".cm-gutters": {
+        backgroundColor: v("bg-editor"),
+        color: v("text-faint"),
+        border: "none",
+        paddingRight: "4px",
+      },
+      ".cm-activeLineGutter": { backgroundColor: "transparent", color: v("text") },
+      ".cm-lineNumbers .cm-gutterElement": { padding: "0 8px 0 14px", minWidth: "36px" },
+      ".cm-foldGutter .cm-gutterElement": { color: v("text-faint"), cursor: "pointer", padding: "0 4px" },
+      ".cm-foldPlaceholder": { backgroundColor: v("accent-soft"), border: "none", color: v("accent"), padding: "0 6px", borderRadius: "4px" },
+      ".cm-matchingBracket, .cm-nonmatchingBracket": {
+        backgroundColor: v("accent-soft"),
+        outline: `1px solid ${v("border-strong")}`,
+        borderRadius: "2px",
+      },
+      ".cm-selectionMatch": { backgroundColor: v("accent-soft") },
+      ".cm-searchMatch": { backgroundColor: "rgba(255,180,84,0.22)", outline: "1px solid rgba(255,180,84,0.45)", borderRadius: "2px" },
+      ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: "rgba(255,180,84,0.45)" },
+      ".cm-panels": { backgroundColor: v("bg-panel"), color: v("text"), borderColor: v("border") },
+      ".cm-panels.cm-panels-top": { borderBottom: `1px solid ${v("border")}` },
+      ".cm-panels.cm-panels-bottom": { borderTop: `1px solid ${v("border")}` },
+      ".cm-panel.cm-search": { padding: "8px 10px", fontFamily: "var(--ui-font)", fontSize: "12px" },
+      ".cm-panel.cm-search input, .cm-panel.cm-search button, .cm-textfield": {
+        backgroundColor: v("bg-input"),
+        color: v("text"),
+        border: `1px solid ${v("border-strong")}`,
+        borderRadius: "6px",
+        padding: "3px 8px",
+        fontFamily: "inherit",
+        fontSize: "12px",
+      },
+      ".cm-button": { backgroundImage: "none", backgroundColor: v("bg-raised"), color: v("text"), border: `1px solid ${v("border-strong")}`, borderRadius: "6px" },
+      ".cm-panel.cm-search label": { color: v("text-muted") },
+      ".cm-tooltip": {
+        backgroundColor: v("bg-raised"),
+        color: v("text"),
+        border: `1px solid ${v("border-strong")}`,
+        borderRadius: "8px",
+        boxShadow: "0 12px 32px rgba(0,0,0,0.35)",
+        overflow: "hidden",
+      },
+      ".cm-tooltip-autocomplete > ul": { fontFamily: "var(--editor-font)", maxHeight: "18em" },
+      ".cm-tooltip-autocomplete > ul > li": { padding: "3px 10px !important", lineHeight: "1.5" },
+      ".cm-tooltip-autocomplete > ul > li[aria-selected]": { backgroundColor: v("accent-soft"), color: v("text") },
+      ".cm-completionDetail": { color: v("text-faint"), fontStyle: "normal", marginLeft: "1em" },
+      ".cm-completionMatchedText": { color: v("accent-strong"), textDecoration: "none", fontWeight: "600" },
+      ".cm-tooltip-hover, .cm-lsp-documentation": { maxWidth: "560px", fontFamily: "var(--ui-font)", fontSize: "12.5px", lineHeight: "1.55" },
+      ".cm-lsp-documentation pre, .cm-lsp-documentation code": { fontFamily: "var(--editor-font)", fontSize: "12px" },
+      ".cm-diagnostic": { padding: "6px 10px", borderLeftWidth: "3px", fontFamily: "var(--ui-font)", fontSize: "12.5px" },
+      ".cm-diagnostic-error": { borderLeftColor: v("danger") },
+      ".cm-diagnostic-warning": { borderLeftColor: v("warning") },
+      ".cm-diagnostic-info": { borderLeftColor: v("info") },
+      ".cm-lintRange-error": { backgroundImage: "none", textDecoration: `underline wavy ${v("danger")}`, textUnderlineOffset: "3px" },
+      ".cm-lintRange-warning": { backgroundImage: "none", textDecoration: `underline wavy ${v("warning")}`, textUnderlineOffset: "3px" },
+      ".cm-lintRange-info, .cm-lintRange-hint": { backgroundImage: "none", textDecoration: `underline dotted ${v("info")}`, textUnderlineOffset: "3px" },
+      ".cm-git-gutter": { width: "3px", marginLeft: "2px" },
+      ".cm-git-gutter .cm-gutterElement": { padding: "0" },
+      ".cm-git-added": { background: v("git-added"), width: "3px", height: "100%", borderRadius: "1px" },
+      ".cm-git-modified": { background: v("git-modified"), width: "3px", height: "100%", borderRadius: "1px" },
+      ".cm-git-deleted": { width: "0", height: "0", borderLeft: `5px solid ${v("git-deleted")}`, borderTop: "4px solid transparent", borderBottom: "4px solid transparent", marginTop: "-4px" },
+      ".cm-indent-markers::before": { opacity: "0.6" },
+    },
+    { dark },
+  );
+
+export const highlightStyle = HighlightStyle.define([
+  { tag: [t.keyword, t.modifier, t.definitionKeyword, t.moduleKeyword], color: v("syn-keyword") },
+  { tag: [t.controlKeyword, t.operatorKeyword], color: v("syn-control") },
+  { tag: [t.string, t.special(t.string), t.character, t.docString], color: v("syn-string") },
+  { tag: [t.number, t.integer, t.float, t.bool, t.null, t.atom], color: v("syn-number") },
+  { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], color: v("syn-comment"), fontStyle: "italic" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.macroName], color: v("syn-function") },
+  { tag: [t.definition(t.function(t.variableName))], color: v("syn-function"), fontWeight: "500" },
+  { tag: [t.typeName, t.className, t.namespace, t.standard(t.typeName)], color: v("syn-type") },
+  { tag: [t.variableName, t.definition(t.variableName)], color: v("syn-variable") },
+  { tag: [t.propertyName, t.definition(t.propertyName)], color: v("syn-property") },
+  { tag: [t.operator, t.punctuation, t.separator, t.bracket], color: v("syn-operator") },
+  { tag: [t.tagName, t.angleBracket], color: v("syn-tag") },
+  { tag: [t.attributeName], color: v("syn-attribute") },
+  { tag: [t.constant(t.variableName), t.standard(t.variableName), t.self], color: v("syn-constant") },
+  { tag: [t.regexp, t.escape], color: v("syn-regexp") },
+  { tag: [t.heading, t.heading1, t.heading2, t.heading3], color: v("syn-heading"), fontWeight: "700" },
+  { tag: [t.link, t.url], color: v("syn-link"), textDecoration: "underline" },
+  { tag: t.emphasis, fontStyle: "italic" },
+  { tag: t.strong, fontWeight: "700" },
+  { tag: t.strikethrough, textDecoration: "line-through" },
+  { tag: [t.meta, t.annotation, t.processingInstruction], color: v("syn-attribute") },
+  { tag: t.invalid, color: v("syn-invalid") },
+]);
+
+export const syntaxColors = syntaxHighlighting(highlightStyle);
