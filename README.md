@@ -3,7 +3,7 @@
 **Write in Flow. Build in Studio.** A fast, good-looking code editor that grows into an IDE when
 you need one, and gets out of the way when you don't.
 
-![X-Editor in Studio mode](docs/assets/x-editor-preview.png)
+![X-Editor in Studio mode](docs/assets/studio-mode.png)
 
 > **Status:** version 0.2.0, an early release. The editor, terminal, Git, search, themes and
 > Run commands work today. GitHub sign-in needs a one-time setup (see
