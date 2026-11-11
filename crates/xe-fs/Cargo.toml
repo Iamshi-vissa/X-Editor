@@ -1,0 +1,17 @@
+[package]
+name = "xe-fs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+parking_lot.workspace = true
+ignore = "0.4"
+regex = "1"
+notify = "8"
+trash = "5"
+
+[dev-dependencies]
+tempfile = "3"
