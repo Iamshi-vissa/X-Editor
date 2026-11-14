@@ -14,6 +14,16 @@ can install or switch to the right version for you.
 It's built with Tauri, so the interface is a React app and the heavy work (files, processes,
 toolchains) runs in Rust on background threads, which keeps the editor responsive.
 
+## XE: TERMINAL EDITOR
+
+The repository also contains `xe`, a small modal terminal editor in Rust built on `ropey`,
+`tree-sitter` and `ratatui`. It is independent of the desktop app. See
+[crates/xe/README.md](crates/xe/README.md).
+
+```bash
+cargo run -p xe --release -- path/to/file.rs
+```
+
 ## FEATURES
 
 - **Editing:** *Monaco* editor (the one in VS Code), tabs, split view, breadcrumbs, minimap and
