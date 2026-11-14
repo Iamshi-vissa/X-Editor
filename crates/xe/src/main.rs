@@ -1,14 +1,17 @@
 //! xe: a small modal terminal text editor.
 
 mod buffer;
+mod command;
 mod editor;
 mod history;
+mod lsp;
 mod syntax;
 mod ui;
 
 use std::io::{self, stdout};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::time::Duration;
 
 use ratatui::crossterm::cursor::SetCursorStyle;
 use ratatui::crossterm::event::{
@@ -22,23 +25,40 @@ use editor::{Editor, Mode};
 const HELP: &str = "\
 xe - a small modal terminal text editor
 
-Usage: xe [FILE]
+Usage: xe [--no-lsp] [FILE]...
 
-Keys (normal mode):
-  h j k l, arrows     move                w b e        word motions
-  0 ^ $               line start / end    gg G         file start / end
-  Ctrl-d Ctrl-u       half page           PgUp PgDn    full page
-  i a I A o O         insert              Esc          back to normal mode
-  d c y + motion      delete/change/yank  dd cc yy     whole line
-  x D C               delete char / to end of line
-  p P                 put                 u Ctrl-r     undo / redo
-  v V                 visual / visual line
-  /text  n N          search              :N           go to line N
-  :w [file]  :q  :q!  :wq                 write / quit
+Moving (a count such as 3w or 12G repeats any of these)
+  h j k l, arrows     character and line      w b e          words
+  0 ^ $               line start and end      gg G           file start and end
+  { }                 paragraphs              %              matching bracket
+  f t F T + char      find on the line        ; ,            repeat the find
+  Ctrl-d Ctrl-u       half page               PgUp PgDn      full page
+
+Editing
+  i a I A o O         insert                  Esc            back to normal mode
+  d c y > < + motion  delete, change, yank, indent, dedent   dd cc yy >> <<  lines
+  iw aw i( a( i\" a\"   text objects after an operator or in visual mode
+  x X D C s S r ~ J   character and line shortcuts
+  p P                 put                     u Ctrl-r       undo and redo
+  .                   repeat the last change  v V            visual modes
+
+Searching (patterns are regular expressions)
+  /text ?text n N     search                  *              word under cursor
+  :s/a/b/g  :%s/a/b/g substitute              :noh           hide matches
+
+Files and buffers
+  :w [file]  :wa      write                   :q :q! :wq :qa quit
+  :e file             open                    :bn :bp :bd :ls  buffers
+  :N                  go to line N
+
+Language server (rust-analyzer, pyright, typescript-language-server, clangd)
+  gd                  go to definition        Ctrl-o         jump back
+  K                   hover                   Ctrl-n         complete
 ";
 
 fn main() -> ExitCode {
-    let mut path = None;
+    let mut paths = Vec::new();
+    let mut lsp = true;
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
             "-h" | "--help" => {
@@ -49,23 +69,22 @@ fn main() -> ExitCode {
                 println!("xe {}", env!("CARGO_PKG_VERSION"));
                 return ExitCode::SUCCESS;
             }
-            _ if path.is_none() => path = Some(PathBuf::from(arg)),
-            _ => {
-                eprintln!("xe: only one file can be opened at a time");
-                return ExitCode::FAILURE;
-            }
+            "--no-lsp" => lsp = false,
+            _ => paths.push(PathBuf::from(arg)),
         }
     }
 
-    // Open the file before touching the terminal so errors print normally.
-    let mut editor = match Editor::open(path.as_deref()) {
+    // Open the files before touching the terminal so errors print normally.
+    let mut editor = match Editor::open(&paths) {
         Ok(editor) => editor,
         Err(e) => {
-            let name = path.map(|p| p.display().to_string()).unwrap_or_default();
-            eprintln!("xe: {name}: {e}");
+            eprintln!("xe: {e}");
             return ExitCode::FAILURE;
         }
     };
+    if lsp {
+        editor.lsp.enable();
+    }
 
     // `init` switches to the alternate screen and raw mode, and installs a
     // panic hook that restores the terminal.
@@ -90,28 +109,33 @@ fn main() -> ExitCode {
 
 fn run(terminal: &mut DefaultTerminal, editor: &mut Editor) -> io::Result<()> {
     let mut shape = None;
+    let mut redraw = true;
     while !editor.quit {
-        terminal.draw(|frame| ui::draw(frame, editor))?;
-
-        let wanted = editor.mode == Mode::Insert;
-        if shape != Some(wanted) {
-            let style = if wanted {
-                SetCursorStyle::SteadyBar
-            } else {
-                SetCursorStyle::SteadyBlock
-            };
-            execute!(stdout(), style)?;
-            shape = Some(wanted);
-        }
-
-        match event::read()? {
-            Event::Key(key) if key.kind != KeyEventKind::Release => editor.handle_key(key),
-            Event::Paste(text) => {
-                editor.buf.begin(editor.cursor);
-                editor.paste(&text);
+        if redraw {
+            terminal.draw(|frame| ui::draw(frame, editor))?;
+            let wanted = editor.mode == Mode::Insert;
+            if shape != Some(wanted) {
+                let style = if wanted {
+                    SetCursorStyle::SteadyBar
+                } else {
+                    SetCursorStyle::SteadyBlock
+                };
+                execute!(stdout(), style)?;
+                shape = Some(wanted);
             }
-            _ => {}
         }
+
+        // Wake up regularly to pick up language server messages.
+        redraw = false;
+        if event::poll(Duration::from_millis(50))? {
+            redraw = true;
+            match event::read()? {
+                Event::Key(key) if key.kind != KeyEventKind::Release => editor.handle_key(key),
+                Event::Paste(text) => editor.paste(&text),
+                _ => {}
+            }
+        }
+        redraw |= editor.tick();
     }
     Ok(())
 }

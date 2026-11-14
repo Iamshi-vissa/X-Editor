@@ -5879,7 +5879,9 @@ name = "xe"
 version = "0.1.0"
 dependencies = [
  "ratatui",
+ "regex",
  "ropey",
+ "serde_json",
  "tempfile",
  "tree-sitter",
  "tree-sitter-c",

@@ -23,6 +23,8 @@ pub struct Buffer {
     syntax: Option<Syntax>,
     eol: &'static str,
     pub use_tabs: bool,
+    /// Incremented on every change to the text, including undo and redo.
+    revision: u64,
 }
 
 impl Buffer {
@@ -67,7 +69,12 @@ impl Buffer {
             syntax,
             eol,
             use_tabs,
+            revision: 0,
         }
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     pub fn rope(&self) -> &Rope {
@@ -165,6 +172,7 @@ impl Buffer {
 
         self.rope.remove(pos..pos + remove_chars);
         self.rope.insert(pos, insert);
+        self.revision += 1;
 
         if let Some(syntax) = self.syntax.as_mut() {
             let new_end_byte = start_byte + insert.len();
