@@ -58,32 +58,76 @@ cd X-Editor
 ```
 
 ```bash
-cargo run -p xe --release -- path/to/file.rs
+cargo run --release -- path/to/file.rs
 ```
 
 To install the `xe` binary on your `PATH`:
 
 ```bash
-cargo install --path crates/xe
+cargo install --path .
 ```
 
-Run `xe --help` for the key reference. The full list is in
-[crates/xe/README.md](crates/xe/README.md).
+Run `xe --help` for the key reference in the terminal.
 
 ## KEYS
 
+**Moving.** A count such as `3w` or `12G` repeats any of these.
+
 | Keys | Action |
 |---|---|
-| `h j k l`, `w b e`, `0 ^ $`, `gg G` | Move by character, word, line and file |
-| `f t F T` + char, `%`, `{ }` | Find on the line, matching bracket, paragraphs |
-| `i a I A o O`, `Esc` | Enter and leave insert mode |
+| `h j k l`, arrows | Character and line |
+| `w b e` | Words |
+| `0 ^ $` | Line start, first non-blank, line end |
+| `gg G`, `:N` | File start, file end, line N |
+| `{ }` | Paragraphs |
+| `%` | Matching bracket |
+| `f t F T` + char, `; ,` | Find a character on the line, repeat the find |
+| `Ctrl-d Ctrl-u`, `PgDn PgUp` | Half page, full page |
+
+**Editing**
+
+| Keys | Action |
+|---|---|
+| `i a I A o O` | Enter insert mode; `Esc` leaves it |
 | `d c y > <` + motion | Delete, change, yank, indent, dedent |
-| `iw i( i" a(` | Text objects |
-| `p P`, `u`, `Ctrl-r`, `.` | Put, undo, redo, repeat |
-| `v V` | Visual selection |
-| `/text`, `?text`, `n N`, `*` | Search |
-| `:w`, `:q`, `:wq`, `:e file`, `:bn`, `:bp` | Write, quit, open, switch buffers |
-| `gd`, `Ctrl-o`, `K`, `Ctrl-n` | Go to definition, jump back, hover, complete |
+| `dd cc yy >> <<` | The same on whole lines |
+| `iw aw i( a( i[ i{ i< i" i' ` | Text objects, after an operator or in visual mode |
+| `x X D C s S Y` | Character and line shortcuts |
+| `r` + char, `~`, `J` | Replace character, toggle case, join lines |
+| `p P` | Put after or before |
+| `u`, `Ctrl-r` | Undo, redo |
+| `.` | Repeat the last change |
+| `v V` | Visual and visual-line selection; `o` swaps ends |
+
+**Searching.** Patterns are regular expressions. A pattern with no capital letters ignores case.
+
+| Keys | Action |
+|---|---|
+| `/text`, `?text`, `n N` | Search forward, backward, next, previous |
+| `*` | Search for the word under the cursor |
+| `:s/a/b/g`, `:%s/a/b/g` | Substitute on the line or in the file; `\1` and `&` work in the replacement |
+| `:noh` | Hide match highlighting |
+
+**Files and buffers**
+
+| Keys | Action |
+|---|---|
+| `:w [file]`, `:wa` | Write this buffer, write all |
+| `:q`, `:q!`, `:wq`, `:qa` | Quit; refuses while any buffer has unsaved changes unless `!` |
+| `:e file` | Open a file in a new buffer |
+| `:bn`, `:bp`, `:bd`, `:ls` | Next, previous, close, list buffers |
+
+**Language server**
+
+| Keys | Action |
+|---|---|
+| `gd`, `Ctrl-o` | Go to definition, jump back |
+| `K` | Show hover information |
+| `Ctrl-n` | Ask for completions; they also appear as you type |
+| `Ctrl-n Ctrl-p`, `Tab` or `Enter`, `Esc` | Move in the completion list, accept, dismiss |
+
+Diagnostics are underlined, colour the line number, and show their message on the bottom line when
+the cursor is on that line.
 
 ## LANGUAGE SERVERS
 
@@ -113,6 +157,8 @@ flowchart TB
     ED --> UI[ui.rs: draws the visible lines with ratatui]
     SYN --> UI
 ```
+
+All source files are in `src/`.
 
 | File | Job |
 |---|---|
@@ -144,7 +190,7 @@ checking the resulting text.
 ## RUNNING THE TESTS
 
 ```bash
-cargo test -p xe
+cargo test
 ```
 
 There are 51 tests. One of them runs a scripted language server and needs `python3`; it skips
@@ -160,26 +206,6 @@ Usable for everyday editing. Not implemented:
 - Grapheme clusters: the cursor moves by Unicode code point, so combining marks and multi-part
   emoji count as several characters
 - Files that are not UTF-8, which are refused instead of opened
-
-## DESKTOP PROTOTYPE
-
-The repository also holds an earlier desktop prototype built with Tauri, React and Monaco, in
-`apps/desktop` and the `x-core`, `x-filesystem`, `x-process` and `x-security` crates. It is not
-maintained and is separate from `xe`.
-
-![Desktop prototype](docs/assets/x-editor-preview.png)
-
-Several of its panels are placeholders: toolchain installation, the extensions list and source
-control do not do real work yet. To run it you need Node.js 18 or newer and, on Linux, the
-WebKitGTK development packages that Tauri requires.
-
-```bash
-npm install
-```
-
-```bash
-npx @tauri-apps/cli dev
-```
 
 ## LICENSE
 

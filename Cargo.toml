@@ -1,11 +1,23 @@
-[workspace]
-resolver = "2"
-members = ["apps/desktop/src-tauri", "crates/*"]
+[package]
+name = "xe"
+version = "0.1.0"
+edition = "2021"
+description = "A small modal terminal text editor"
+license = "MIT"
 
-[profile.dev]
-debug = 0
-incremental = false
+[dependencies]
+ratatui = "0.30"
+ropey = { version = "1.6", default-features = false, features = ["simd"] }
+tree-sitter = "0.25"
+tree-sitter-rust = "0.24"
+tree-sitter-python = "0.25"
+tree-sitter-javascript = "0.25"
+tree-sitter-typescript = "0.23"
+tree-sitter-json = "0.24"
+tree-sitter-c = "0.24"
+unicode-width = "0.2"
+regex = "1"
+serde_json = "1"
 
-[profile.test]
-debug = 0
-incremental = false
+[dev-dependencies]
+tempfile = "3"
