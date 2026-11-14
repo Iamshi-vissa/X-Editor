@@ -1,4 +1,4 @@
-//! xe: a small modal terminal text editor.
+//! glyphe: a small modal terminal text editor.
 
 mod buffer;
 mod command;
@@ -23,9 +23,9 @@ use ratatui::DefaultTerminal;
 use editor::{Editor, Mode};
 
 const HELP: &str = "\
-xe - a small modal terminal text editor
+glyphe - a small modal terminal text editor
 
-Usage: xe [--no-lsp] [FILE]...
+Usage: glyphe [--no-lsp] [FILE]...
 
 Moving (a count such as 3w or 12G repeats any of these)
   h j k l, arrows     character and line      w b e          words
@@ -66,7 +66,7 @@ fn main() -> ExitCode {
                 return ExitCode::SUCCESS;
             }
             "-V" | "--version" => {
-                println!("xe {}", env!("CARGO_PKG_VERSION"));
+                println!("glyphe {}", env!("CARGO_PKG_VERSION"));
                 return ExitCode::SUCCESS;
             }
             "--no-lsp" => lsp = false,
@@ -78,7 +78,7 @@ fn main() -> ExitCode {
     let mut editor = match Editor::open(&paths) {
         Ok(editor) => editor,
         Err(e) => {
-            eprintln!("xe: {e}");
+            eprintln!("glyphe: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -101,7 +101,7 @@ fn main() -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("xe: {e}");
+            eprintln!("glyphe: {e}");
             ExitCode::FAILURE
         }
     }

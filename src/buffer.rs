@@ -246,7 +246,7 @@ impl Buffer {
             _ => PathBuf::from("."),
         };
         let name = target.file_name().unwrap_or_default().to_string_lossy();
-        let tmp = dir.join(format!(".{name}.xe-{}.tmp", std::process::id()));
+        let tmp = dir.join(format!(".{name}.glyphe-{}.tmp", std::process::id()));
 
         let written = (|| {
             let mut out = BufWriter::new(File::create(&tmp)?);

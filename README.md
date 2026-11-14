@@ -1,4 +1,4 @@
-# X-EDITOR
+# GLYPHE
 
 A modal code editor for the terminal, written in Rust.
 
@@ -21,7 +21,7 @@ Type "str" is not assignable to declared type "int"
 
 ## ABOUT
 
-The editor is called `xe`. It uses vi-style keys, highlights code with *tree-sitter*, and talks to
+Glyphe uses vi-style keys, highlights code with *tree-sitter*, and talks to
 language servers for diagnostics, go to definition, hover and completion.
 
 It was written to learn how editors work, so the core parts are implemented in this repository
@@ -61,13 +61,13 @@ cd X-Editor
 cargo run --release -- path/to/file.rs
 ```
 
-To install the `xe` binary on your `PATH`:
+To install the `glyphe` binary on your `PATH`:
 
 ```bash
 cargo install --path .
 ```
 
-Run `xe --help` for the key reference in the terminal.
+Run `glyphe --help` for the key reference in the terminal.
 
 ## KEYS
 
@@ -131,7 +131,7 @@ the cursor is on that line.
 
 ## LANGUAGE SERVERS
 
-Language servers are not bundled. `xe` starts one if it finds it on your `PATH` and works without
+Language servers are not bundled. Glyphe starts one if it finds it on your `PATH` and works without
 language features otherwise. Pass `--no-lsp` to never start one.
 
 | Language | Server |

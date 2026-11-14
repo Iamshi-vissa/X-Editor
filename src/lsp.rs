@@ -228,7 +228,7 @@ impl Client {
         let name = root.file_name().unwrap_or_default().to_string_lossy();
         let params = json!({
             "processId": std::process::id(),
-            "clientInfo": { "name": "xe", "version": env!("CARGO_PKG_VERSION") },
+            "clientInfo": { "name": "glyphe", "version": env!("CARGO_PKG_VERSION") },
             "rootUri": uri,
             "workspaceFolders": [{ "uri": uri, "name": name }],
             "capabilities": {

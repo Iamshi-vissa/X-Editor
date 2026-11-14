@@ -466,7 +466,7 @@ fn utf16_positions_convert_both_ways() {
 }
 
 /// A scripted language server: answers initialize, publishes one diagnostic
-/// when a document opens, and replies to the three requests xe makes.
+/// when a document opens, and replies to the three requests glyphe makes.
 const FAKE_SERVER: &str = r#"
 import json, sys
 def send(m):
