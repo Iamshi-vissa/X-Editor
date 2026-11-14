@@ -45,8 +45,9 @@ and the language server client.
 
 ## GETTING STARTED
 
-You need Rust 1.85 or newer (install with [rustup](https://rustup.rs)) and a C compiler, which the
-tree-sitter grammars are built with.
+You need a recent stable Rust (install with [rustup](https://rustup.rs)) and a C compiler, which
+the tree-sitter grammars are built with. It is built and tested with Rust 1.97; older versions
+have not been tried.
 
 ```bash
 git clone https://github.com/Iamshi-vissa/X-Editor.git
